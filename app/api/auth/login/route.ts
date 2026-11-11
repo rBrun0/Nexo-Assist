@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await setLocalSession(user);
+    await setLocalSession(user, { rememberMe: parsed.data.rememberMe });
 
     return NextResponse.json({
       user: { name: user.name, email: user.email, role: user.role },

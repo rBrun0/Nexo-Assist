@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import type { Role } from "@prisma/client";
 
 export const LOCAL_SESSION_COOKIE = "nexo_session";
-const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7;
+const SESSION_DURATION_SECONDS = 60 * 60 * 24;
+const REMEMBER_ME_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 export type LocalSession = {
   id: string;
@@ -42,15 +43,23 @@ function isLocalSession(value: unknown): value is LocalSession {
   );
 }
 
-export async function setLocalSession(user: {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-}) {
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_DURATION_SECONDS;
+export async function setLocalSession(
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: Role;
+  },
+  options: { rememberMe?: boolean } = {},
+) {
+  const rememberMe = Boolean(options.rememberMe);
+  const durationSeconds = rememberMe
+    ? REMEMBER_ME_DURATION_SECONDS
+    : SESSION_DURATION_SECONDS;
+  const maxAge = rememberMe ? REMEMBER_ME_DURATION_SECONDS : undefined;
+  const expiresAt = Math.floor(Date.now() / 1000) + durationSeconds;
   const payload = Buffer.from(
-    JSON.stringify({ ...user, expiresAt } satisfies LocalSession)
+    JSON.stringify({ ...user, expiresAt } satisfies LocalSession),
   ).toString("base64url");
   const token = `${payload}.${sign(payload)}`;
   const cookieStore = await cookies();
@@ -60,7 +69,7 @@ export async function setLocalSession(user: {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: SESSION_DURATION_SECONDS,
+    ...(maxAge ? { maxAge } : {}),
   });
 }
 
@@ -88,7 +97,7 @@ export async function getLocalSession(): Promise<LocalSession | null> {
 
   try {
     const parsed: unknown = JSON.parse(
-      Buffer.from(payload, "base64url").toString("utf8")
+      Buffer.from(payload, "base64url").toString("utf8"),
     );
     return isLocalSession(parsed) ? parsed : null;
   } catch {

@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Newsreader } from "next/font/google";
+
 import { Providers } from "@/app/providers";
 import "./globals.css";
+
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Nexo Assist | Atendimento",
@@ -9,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="pt-BR" className="h-full antialiased">
+    <html lang="pt-BR" className={`${newsreader.variable} h-full antialiased`}>
       <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>

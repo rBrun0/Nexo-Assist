@@ -30,6 +30,7 @@ import {
   useAnalystQueueRealtime,
   useChatMessages,
 } from "@/hooks/use-chat-messages";
+import { useAnalystLobbyPresence } from "@/hooks/use-analyst-lobby-presence";
 import { useOnlinePresence } from "@/hooks/use-online-presence";
 
 export type AnalystWorkingAction =
@@ -61,6 +62,11 @@ export function useAnalystConsole({
   const [conversationFilter, setConversationFilter] =
     useState<ConversationFilter>("all");
   const [now, setNow] = useState(() => Date.now());
+
+  useAnalystLobbyPresence({
+    analystId: currentAnalystId,
+    analystName: currentAnalystName,
+  });
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);

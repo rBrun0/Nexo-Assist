@@ -13,6 +13,8 @@ export type ConversationPresenceUser = {
   role: PresenceRole;
 };
 
+const ANALYST_LOBBY_CHANNEL = "presence:analysts";
+
 function presenceChannelName(sessionId: string) {
   return `presence:session:${sessionId}`;
 }
@@ -21,7 +23,8 @@ function parsePresenceUser(value: unknown): ConversationPresenceUser | null {
   if (!isRecord(value)) return null;
   const id = typeof value.id === "string" ? value.id : null;
   const name = typeof value.name === "string" ? value.name : null;
-  const role = value.role === "EMPLOYEE" || value.role === "ANALYST" ? value.role : null;
+  const role =
+    value.role === "EMPLOYEE" || value.role === "ANALYST" ? value.role : null;
   if (!id || !name || !role) return null;
   return { id, name, role };
 }
@@ -41,14 +44,18 @@ function usersFromPresenceState(
   return [...byId.values()];
 }
 
-export function subscribeConversationPresence({
-  sessionId,
-  user,
+function bindPresenceChannel({
+  channelName,
+  presenceKey,
+  trackUser,
   onSync,
+  logLabel,
 }: {
-  sessionId: string;
-  user: ConversationPresenceUser;
+  channelName: string;
+  presenceKey?: string;
+  trackUser?: ConversationPresenceUser;
   onSync: (users: ConversationPresenceUser[]) => void;
+  logLabel: string;
 }): () => void {
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {
@@ -64,9 +71,10 @@ export function subscribeConversationPresence({
     onSync(usersFromPresenceState(active.presenceState()));
   };
 
-  channel = supabase.channel(presenceChannelName(sessionId), {
-    config: { presence: { key: user.id } },
-  });
+  channel = supabase.channel(
+    channelName,
+    presenceKey ? { config: { presence: { key: presenceKey } } } : undefined,
+  );
 
   channel
     .on("presence", { event: "sync" }, () => {
@@ -81,16 +89,22 @@ export function subscribeConversationPresence({
     .subscribe(async (status) => {
       if (cancelled || !channel) return;
       if (status !== "SUBSCRIBED") return;
+
+      if (!trackUser) {
+        syncFromChannel(channel);
+        return;
+      }
+
       try {
         await channel.track({
-          id: user.id,
-          name: user.name,
-          role: user.role,
+          id: trackUser.id,
+          name: trackUser.name,
+          role: trackUser.role,
         });
         syncFromChannel(channel);
       } catch (error) {
-        console.error("Falha ao publicar presença na conversa:", {
-          sessionId,
+        console.error(`Falha ao publicar presença (${logLabel}):`, {
+          channelName,
           error,
         });
       }
@@ -103,10 +117,58 @@ export function subscribeConversationPresence({
     const active = channel;
     channel = null;
     void active.unsubscribe().catch((error: unknown) => {
-      console.error("Falha ao encerrar canal de presença:", {
-        sessionId,
+      console.error(`Falha ao encerrar canal de presença (${logLabel}):`, {
+        channelName,
         error,
       });
     });
   };
+}
+
+export function subscribeConversationPresence({
+  sessionId,
+  user,
+  onSync,
+}: {
+  sessionId: string;
+  user: ConversationPresenceUser;
+  onSync: (users: ConversationPresenceUser[]) => void;
+}): () => void {
+  return bindPresenceChannel({
+    channelName: presenceChannelName(sessionId),
+    presenceKey: user.id,
+    trackUser: user,
+    onSync,
+    logLabel: `session:${sessionId}`,
+  });
+}
+
+/** Analista no console: publica presença no lobby público. */
+export function subscribeAnalystPresence({
+  user,
+  onSync,
+}: {
+  user: ConversationPresenceUser;
+  onSync: (users: ConversationPresenceUser[]) => void;
+}): () => void {
+  return bindPresenceChannel({
+    channelName: ANALYST_LOBBY_CHANNEL,
+    presenceKey: user.id,
+    trackUser: { ...user, role: "ANALYST" },
+    onSync,
+    logLabel: "analyst-lobby",
+  });
+}
+
+/** Login (e observadores): lê o lobby sem publicar presença. */
+export function observeAnalystPresence({
+  onSync,
+}: {
+  onSync: (users: ConversationPresenceUser[]) => void;
+}): () => void {
+  return bindPresenceChannel({
+    channelName: ANALYST_LOBBY_CHANNEL,
+    onSync,
+    logLabel: "analyst-lobby-observe",
+  });
 }

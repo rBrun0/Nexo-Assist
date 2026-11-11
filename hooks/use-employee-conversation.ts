@@ -238,7 +238,7 @@ export function useEmployeeConversation({
     setPendingLocalMessage(null);
   }, [syncConversationMessages]);
 
-  useOnlinePresence({
+  const presence = useOnlinePresence({
     sessionId: enabled ? (conversation?.id ?? null) : null,
     user: {
       id: employee.id,
@@ -586,6 +586,7 @@ export function useEmployeeConversation({
     isRequestingAnalyst,
     streamedResponseText,
     statusBadge,
+    onlineUsers: presence.onlineUsers,
     messagesEndRef,
     lastInteractiveAssistantMessageId,
     submitMessage,

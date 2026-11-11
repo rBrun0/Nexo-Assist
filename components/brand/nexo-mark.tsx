@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 import { cn } from "@/lib/utils";
 
 const MARK_SRC = "/brand/nexo-mark.png";
@@ -14,13 +12,16 @@ export function NexoMark({
   priority?: boolean;
 }) {
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element -- brand mark needs lossless transparent PNG without optimizer boxing
+    <img
       src={MARK_SRC}
       alt="Nexo"
       width={size}
       height={size}
-      priority={priority}
-      className={cn("bg-transparent object-contain", className)}
+      decoding="async"
+      {...(priority ? { fetchPriority: "high" as const } : {})}
+      className={cn("block bg-transparent object-contain", className)}
+      style={{ width: size, height: size }}
     />
   );
 }
