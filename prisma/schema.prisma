@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  EMPLOYEE
+  ANALYST
+}
+
+enum TicketType {
+  INCIDENT // Incidente (INC)
+  REQUEST // Requisição (REQ)
+}
+
+enum TicketCategory {
+  ACCESS // Acesso
+  NETWORK_VPN // Rede e VPN
+  HARDWARE // Hardware
+  SOFTWARE // Software
+  EMAIL // E-mail
+  OTHER // Outros
+}
+
+enum Priority {
+  CRITICAL // Crítica (1h)
+  HIGH // Alta (4h)
+  MEDIUM // Média (3 dias)
+  LOW // Baixa (5 dias)
+}
+
+enum TicketStatus {
+  OPEN // Aberto
+  IN_PROGRESS // Em andamento
+  WAITING_ANALYST // Aguardando analista
+  APPROVED // Aprovado
+  RESOLVED // Resolvido
+  CLOSED // Fechado
+}
+
+enum ChatStatus {
+  BOT_ACTIVE // Agente atendendo
+  WAITING_HUMAN // Transbordo (Aguardando atendente)
+  HUMAN_ACTIVE // Analista assumiu a conversa
+  CLOSED // Conversa encerrada
+}
+
+enum MessageSender {
+  EMPLOYEE
+  ASSISTANT
+  ANALYST
+  SYSTEM
+}
+
+model User {
+  id               String        @id @default(uuid())
+  email            String        @unique
+  password         String?
+  name             String
+  job              String?
+  role             Role          @default(EMPLOYEE)
+  tickets          Ticket[]      @relation("CreatedTickets")
+  affectedTickets  Ticket[]      @relation("AffectedUsers")
+  chats            ChatSession[]
+  assignedChats    ChatSession[] @relation("AssignedAnalyst")
+  sentChatMessages ChatMessage[] @relation("ChatMessageSender")
+  createdAt        DateTime      @default(now())
+}
+
+model Ticket {
+  id          String         @id @default(uuid())
+  code        String         @unique // Ex: INC-20311, REQ-10442
+  title       String
+  description String
+  type        TicketType
+  category    TicketCategory
+  priority    Priority       @default(MEDIUM)
+  status      TicketStatus   @default(OPEN)
+  slaDeadline DateTime?
+  isOverdue   Boolean        @default(false)
+
+  createdById   String
+  createdBy     User   @relation("CreatedTickets", fields: [createdById], references: [id])
+  affectedUsers User[] @relation("AffectedUsers")
+
+  comments  TicketComment[]
+  chats     ChatSession[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model TicketComment {
+  id        String   @id @default(uuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author    String
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model KnowledgeBase {
+  id        String         @id @default(uuid())
+  title     String
+  content   String
+  category  TicketCategory
+  keywords  String // Alterado de String[] para String (ex: "vpn,acesso,rede")
+  createdAt DateTime       @default(now())
+}
+
+model ChatSession {
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  status            ChatStatus    @default(BOT_ACTIVE)
+  ticketId          String?
+  ticket            Ticket?       @relation(fields: [ticketId], references: [id])
+  assignedAnalystId String?
+  assignedAnalyst   User?         @relation("AssignedAnalyst", fields: [assignedAnalystId], references: [id], onDelete: SetNull)
+  handoffSummary    String?
+  handoffReason     String?
+  handoffAt         DateTime?
+  confidenceScore   Int?
+  messages          ChatMessage[]
+  closedAt          DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([assignedAnalystId, status])
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id               String        @id @default(uuid())
+  chatSessionId    String
+  chatSession      ChatSession   @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  sender           MessageSender
+  senderUserId     String?
+  senderUser       User?         @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  content          String
+  thoughtProcess   Json? // User-facing action summary, rationale, and confidence
+  metadata         Json? // Cards de rascunho e ações rápidas
+  readAtByEmployee DateTime?
+  readAtByAnalyst  DateTime?
+  createdAt        DateTime      @default(now())
+
+  @@index([chatSessionId, createdAt])
+  @@index([chatSessionId, sender, readAtByAnalyst])
+  @@index([chatSessionId, sender, readAtByEmployee])
+  @@index([senderUserId])
+}
