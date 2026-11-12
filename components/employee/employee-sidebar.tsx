@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, MessageSquareText, UserRound } from "lucide-react";
+import {
+  LogOut,
+  MessageSquare,
+  MessageSquareText,
+  UserRound,
+} from "lucide-react";
 
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { UserAvatar } from "@/components/chat/user-avatar";
@@ -32,21 +37,23 @@ export function EmployeeSidebar({
   onLogout: () => void;
 }) {
   return (
-    <Sidebar collapsible="offcanvas" className="border-r border-slate-200">
+    <Sidebar
+      collapsible="offcanvas"
+      className="border-r border-slate-200"
+      innerSidebarClassName="bg-white"
+    >
       <SidebarHeader className="gap-8 px-5 pt-6">
         <Link
           href="/"
           className="flex items-center gap-2.5 px-1 text-[19px] font-bold tracking-tight text-slate-900"
           aria-label="Nexo Assist, página inicial"
         >
-          <NexoMark size={32} className="size-8" />
-          <span>
-            Nexo <span className="text-brand-logo">Assist</span>
-          </span>
+          <NexoMark size={24} className="size-8" />
+          <span>Nexo Assist</span>
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 pt-8">
+      <SidebarContent className="px-3 pt-2">
         <SidebarMenu className="gap-1">
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -54,7 +61,7 @@ export function EmployeeSidebar({
               render={<Link href="/employee/atendimento" />}
               className="h-10 gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 data-[active=true]:bg-sidebar-accent data-[active=true]:text-brand-nav-active data-[active=true]:shadow-none"
             >
-              <MessageSquareText className="size-[17px]" />
+              <MessageSquare className="size-[17px]" />
               <span>Atendimento</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -84,7 +91,7 @@ export function EmployeeSidebar({
               variant="ghost"
               onClick={onLogout}
               disabled={isLoggingOut}
-              className="mt-4 h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
+              className="h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
             >
               <LogOut className="size-[17px]" />
               {isLoggingOut ? "Saindo..." : "Sair"}
@@ -137,7 +144,7 @@ const User = ({
         className="size-10 text-xs ring-2 ring-white"
         aria-label={`Foto de ${name}`}
       />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 leading-tight">
         <p className="truncate text-[14px] font-semibold text-slate-800">
           {name}
         </p>

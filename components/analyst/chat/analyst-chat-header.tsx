@@ -54,26 +54,22 @@ export function AnalystChatHeader({
           <UserAvatar
             initials={conversation.initials}
             online={employeeIsOnline}
+            className="size-12 text-[14px]"
           />
           <div className="min-w-0">
             <h2 className="truncate text-[13px] font-semibold text-slate-900">
               {conversation.name}
             </h2>
             <p className="flex min-w-0 items-center gap-1.5 truncate text-[11px]">
-              <span
-                className={cn(
-                  "font-medium",
-                  employeeIsOnline ? "text-emerald-600" : "text-slate-400",
-                )}
-              >
+              <span className={cn("font-medium", "text-zinc-500")}>
                 {employeeIsOnline ? "Online" : "Offline"}
               </span>
               {jobLabel ? (
                 <>
-                  <span className="text-slate-300" aria-hidden>
+                  <span className="text-zinc-500" aria-hidden>
                     ·
                   </span>
-                  <span className="truncate text-slate-500">{jobLabel}</span>
+                  <span className="truncate text-zinc-500">{jobLabel}</span>
                 </>
               ) : null}
             </p>

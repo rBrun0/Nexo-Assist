@@ -24,7 +24,7 @@ export function AnalystChatMessageList({
   currentAnalystName: string;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6">
+    <div className="chat-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6">
       <div className="mx-auto mb-6 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] text-slate-500">
         <ShieldCheck className="size-3.5 text-brand-action" />
         Conversa vinculada ao atendimento Nexo

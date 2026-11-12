@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { getEmployeeStatusUi } from "@/lib/chat/conversation-status";
 import type { EmployeeConversationStatus } from "@/lib/types/employee-conversation";
-import { Textarea } from "../ui/textarea";
+import { Input } from "../ui/input";
 
 export function EmployeeComposer({
   message,
@@ -58,7 +58,7 @@ export function EmployeeComposer({
     : statusUi.placeholder;
 
   return (
-    <div className="shrink-0 border-t border-slate-200/70 bg-surface pt-3 pb-5">
+    <div className="shrink-0 bg-transparent pt-2 pb-5">
       {limitBanner ? (
         <div
           role="status"
@@ -91,14 +91,13 @@ export function EmployeeComposer({
       ) : null}
       <form
         onSubmit={onSubmit}
-        className="rounded-2xl p-2 shadow-[0_8px_30px_rgba(15,23,42,0.06)] focus-within:border-blue-200 focus-within:ring-4 focus-within:ring-blue-50 flex gap-3"
+        className="flex gap-3 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-[0_10px_40px_rgba(15,23,42,0.08)] ring-1 ring-black/5 focus-within:border-brand-logo/40 focus-within:ring-4 focus-within:ring-brand-logo/10"
       >
         <label htmlFor="message" className="sr-only">
           Escreva sua mensagem
         </label>
-        <Textarea
+        <Input
           id="message"
-          rows={2}
           value={message}
           onChange={(event) => onMessageChange(event.target.value)}
           disabled={composerLocked}
@@ -111,7 +110,7 @@ export function EmployeeComposer({
             }
           }}
           placeholder={placeholder}
-          className="max-h-32 min-h-12 w-full resize-y bg-transparent px-3 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full resize-y border-0 bg-transparent text-sm text-slate-800 shadow-none outline-none placeholder:text-slate-400 focus-visible:border-0 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-60"
         />
         <div className="flex items-center gap-3">
           <Button
@@ -119,14 +118,14 @@ export function EmployeeComposer({
             size="icon"
             disabled={!message.trim() || composerLocked}
             aria-label="Enviar mensagem"
-            className="rounded-md bg-brand-action text-white hover:bg-brand-action-hover disabled:bg-slate-200 disabled:text-slate-400 px-3 py-2 w-20"
+            className="flex items-center gap-2 w-20 rounded-md bg-brand-action px-3 py-2 text-white hover:bg-brand-action-hover disabled:bg-slate-200 disabled:text-slate-400"
           >
             <ArrowUp className="size-[14px]" />
-            Enviar
+            <span>Enviar</span>
           </Button>
         </div>
       </form>
-      <div className="w-full text-right text-xs text-slate-500 pr-3">
+      <div className="mt-2 w-full pr-1 text-right text-xs text-slate-500">
         {messageCount}/{messageLimit} mensagens nesta sessão
       </div>
     </div>

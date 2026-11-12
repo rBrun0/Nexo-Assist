@@ -148,7 +148,7 @@ function OtherTicketsList({ tickets }: { tickets: AnalystTicketItem[] }) {
         <AccordionItem
           key={ticket.id}
           value={ticket.id}
-          className="rounded-xl bg-white px-3 not-last:border-b"
+          className="rounded-xl bg-white px-1 not-last:border-b rounded-none!"
         >
           <AccordionTrigger className="items-center gap-2 py-3 hover:no-underline">
             <div className="flex items-center justify-start gap-2">
@@ -166,17 +166,15 @@ function OtherTicketsList({ tickets }: { tickets: AnalystTicketItem[] }) {
                 })}
               />
               <span className="min-w-0 flex-1 pr-2">
-                <span className="block truncate text-wrap text-[12px] font-semibold text-slate-800">
+                <span className="block truncate text-wrap text-[14.5px] font-semibold text-slate-800">
                   {ticket.title}
                 </span>
                 <span className="mt-1 flex items-center justify-start gap-2">
-                  <span className="truncate text-[10px] text-slate-500">
+                  <span className="truncate text-sm text-zinc-500">
                     {ticket.code}
                   </span>
                   <span className="size-1 shrink-0 rounded-full bg-slate-400" />
-                  <span className="text-[10px] text-slate-500">
-                    {ticket.status}
-                  </span>
+                  <span className="text-sm text-zinc-500">{ticket.status}</span>
                 </span>
               </span>
             </div>
@@ -266,16 +264,18 @@ export function AnalystTicketsPanel({
   const hasMoreOtherTickets = otherTickets.length > OTHER_TICKETS_PREVIEW;
 
   return (
-    <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}>
+    <div
+      className={cn("flex min-h-0 flex-1 flex-col overflow-hidden", className)}
+    >
       <div className="border-b border-slate-200 px-4 py-3">
         <p className="text-md font-semibold">Chamados de {firstName}</p>
-        <p className="text-xs font-medium text-slate-500">
+        <p className="text-xs text-zinc-600">
           {ticketsLabel} · {closedLabel}
         </p>
       </div>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-3">
-        <section className="space-y-2">
-          <p className="px-1 text-[10px] font-semibold tracking-wide text-slate-600 uppercase">
+        <section className="space-y-2 pt-3">
+          <p className="px-1 text-xs font-semibold tracking-wide text-slate-600">
             Desta conversa
           </p>
           {conversationTicketCard ? (
@@ -294,7 +294,7 @@ export function AnalystTicketsPanel({
           )}
         </section>
         <section className="space-y-2">
-          <p className="px-1 text-[10px] font-semibold tracking-wide text-slate-600 uppercase">
+          <p className="px-1 text-xs font-semibold tracking-wide text-slate-600">
             Outros chamados
           </p>
           {otherTickets.length > 0 ? (

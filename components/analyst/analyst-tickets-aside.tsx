@@ -13,7 +13,7 @@ export function AnalystTicketsAside({
   onTicketStatusChange?: (ticketId: string, status: string) => Promise<void>;
 }) {
   return (
-    <aside className="hidden min-h-0 w-[290px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white xl:flex">
+    <aside className="hidden min-h-0 w-[330px] shrink-0 flex-col overflow-hidden border-l border-slate-200 bg-white xl:flex">
       <AnalystTicketsPanel
         conversation={conversation}
         currentAnalystId={currentAnalystId}

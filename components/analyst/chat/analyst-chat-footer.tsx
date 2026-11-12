@@ -8,6 +8,7 @@ import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 type WorkingAction =
   | "claim"
@@ -181,7 +182,7 @@ export function AnalystChatFooter({
         <label htmlFor="analyst-message" className="sr-only">
           Escreva uma resposta
         </label>
-        <Textarea
+        <Input
           id="analyst-message"
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
@@ -192,7 +193,7 @@ export function AnalystChatFooter({
               event.currentTarget.form?.requestSubmit();
             }
           }}
-          rows={2}
+          // rows={2}
           placeholder={footerUi.placeholder}
           className="max-h-32 min-h-11 flex-1 resize-y text-xs leading-5"
         />

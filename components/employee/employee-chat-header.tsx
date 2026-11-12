@@ -39,7 +39,9 @@ export function EmployeeChatHeader({
                 : "bg-status-warning"
             }`}
           />
-          <span className="text-[11px] text-slate-500">{statusLabel(status)}</span>
+          <span className="text-[11px] text-slate-500">
+            {statusLabel(status)}
+          </span>
           {showPresence ? (
             <OnlinePresenceIndicator onlineUsers={onlineUsers} />
           ) : null}

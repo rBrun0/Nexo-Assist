@@ -79,7 +79,7 @@ export function AnalystChatPanel({
   return (
     <section
       className={cn(
-        "relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-subtle",
+        "relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface",
         conversation ? "flex" : "hidden sm:flex",
       )}
       aria-label={

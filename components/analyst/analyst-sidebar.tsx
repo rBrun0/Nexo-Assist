@@ -39,18 +39,22 @@ export function AnalystSidebar({
       : "Conversas";
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-slate-200 bg-white">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-slate-200 bg-white"
+      innerSidebarClassName="bg-surface-subtle"
+    >
       <SidebarHeader className="items-center px-2 pt-4">
         <Link
           href="/analyst"
           aria-label="Nexo Assist, console do analista"
           className="flex size-9 items-center justify-center"
         >
-          <NexoMark size={36} className="size-9" />
+          <NexoMark size={24} className="size-9" />
         </Link>
       </SidebarHeader>
 
-      <SidebarContent className="items-center px-2 pt-8">
+      <SidebarContent className="items-center px-2 pt-2">
         <SidebarMenu className="w-auto gap-2">
           <SidebarMenuItem>
             <SidebarMenuButton

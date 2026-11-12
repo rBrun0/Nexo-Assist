@@ -24,13 +24,14 @@ export function EmployeePage({
 }) {
   const { logout, logoutError, isLoggingOut } = useLogout();
   const isProfilePage = page === "perfil";
-  const pageTitle = isProfilePage ? "Meu perfil" : "Atendimento";
   const pagePath = isProfilePage ? (
-    "perfil"
+    <div className="flex items-center gap-2">
+      <span>Service desk de TI</span> <span>&gt;</span> <b>Meu perfil</b>
+    </div>
   ) : (
-    <>
+    <div className="flex items-center gap-2">
       <span>Service desk de TI</span> <span>&gt;</span> <b>Atendimento</b>
-    </>
+    </div>
   );
 
   const chat = useEmployeeConversation({
@@ -48,16 +49,15 @@ export function EmployeePage({
         onLogout={() => void logout()}
       />
 
-      <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden bg-surface">
+      <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
         <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-8">
           <div>
-            <p className="text-sm font-semibold text-slate-900">{pageTitle}</p>
-            <p className="text-xs text-slate-500">{pagePath}</p>
+            <p className="text-sm text-slate-500">{pagePath}</p>
           </div>
           {!isProfilePage ? (
             <Badge
               pastelFromText={chat.statusBadge.pastelKey}
-              className="h-7 gap-1.5 rounded-full border px-2.5 text-[11px] font-medium"
+              className="h-7 gap-1.5 rounded-full border-none! px-2.5 text-[11px] font-medium"
               aria-label={chat.statusBadge.aria}
             >
               <span
@@ -69,8 +69,8 @@ export function EmployeePage({
         </header>
 
         {!isProfilePage ? (
-          <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
-            <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+          <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white px-5 sm:px-8">
+            <div className="chat-scroll min-h-0 flex-1 overflow-y-auto pt-2 pb-6">
               {chat.isLoadingConversation ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-500">
                   Carregando sua conversa...

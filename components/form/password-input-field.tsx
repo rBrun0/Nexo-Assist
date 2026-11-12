@@ -35,7 +35,7 @@ export function PasswordInputField({
             onClick={() => setVisible((current) => !current)}
             aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
             aria-pressed={visible}
-            className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-logo"
+            className="absolute top-1/2 right-3 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors group-focus-within/control:text-brand-logo hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-logo"
           >
             {visible ? (
               <EyeOff className="size-[17px]" />

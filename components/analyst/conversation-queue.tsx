@@ -55,18 +55,19 @@ export function ConversationQueue({
             onClick={() => onSelect(conversation.id)}
             aria-current={selectedId === conversation.id ? "true" : undefined}
             className={cn(
-              "flex w-full items-center gap-2 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50",
-              selectedId === conversation.id && "bg-slate-100",
+              "flex w-full items-center rounded-lg gap-2 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50",
+              selectedId === conversation.id && "bg-zinc-100",
             )}
           >
             <UserAvatar
               initials={conversation.initials}
               online={selectedId === conversation.id && employeeIsOnline}
-              className="size-10 text-[11px]"
+              className="size-12 text-[14px]"
+              // size="md"
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
-                <span className="truncate text-[13px] font-semibold text-slate-800">
+                <span className="truncate text-[15px] font-semibold text-slate-800">
                   {conversation.name}
                 </span>
                 <span className="shrink-0 text-[10px] text-slate-400">

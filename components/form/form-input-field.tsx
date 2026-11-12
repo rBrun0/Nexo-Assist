@@ -23,6 +23,7 @@ export type FormInputFieldProps = Omit<
   leadingIcon?: LucideIcon;
   trailing?: ReactNode;
   fieldClassName?: string;
+  labelClassName?: string;
   controlClassName?: string;
 };
 
@@ -35,6 +36,7 @@ export function FormInputField({
   trailing,
   className,
   fieldClassName,
+  labelClassName,
   controlClassName,
   ...inputProps
 }: FormInputFieldProps) {
@@ -45,17 +47,20 @@ export function FormInputField({
       <div className="flex items-center justify-between gap-3">
         <FieldLabel
           htmlFor={id}
-          className="text-sm font-medium text-slate-700"
+          className={cn(
+            "text-sm font-medium text-slate-700",
+            labelClassName,
+          )}
         >
           {label}
         </FieldLabel>
         {labelAction}
       </div>
-      <div className="relative">
+      <div className="group/control relative">
         {LeadingIcon ? (
           <LeadingIcon
             aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-3.5 size-[17px] -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute top-1/2 left-3.5 size-[17px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within/control:text-brand-logo"
           />
         ) : null}
         <Input

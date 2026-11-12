@@ -8,7 +8,6 @@ import { AssistantMessageBlocks } from "@/components/chat/assistant-message-bloc
 import { ChatMessageFrame } from "@/components/chat/chat-message-frame";
 import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator";
 import type { AgentActivityStep } from "@/lib/agent/activity";
-import { formatMessageTime } from "@/lib/chat/format-message-time";
 import type { ChatHistoryMessage } from "@/lib/types/conversation";
 import type {
   ChatOption,
@@ -47,7 +46,7 @@ export function EmployeeMessageList({
   onCancelDraft: (draftMessageId: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-5 py-2">
+    <div className="flex flex-col gap-5 px-1 py-5 sm:px-2 sm:py-6">
       {messages.map((chatMessage, index) => {
         const isSystemMessage = chatMessage.sender === "SYSTEM";
         const isEmployeeMessage = chatMessage.sender === "EMPLOYEE";
@@ -66,9 +65,7 @@ export function EmployeeMessageList({
           <ChatMessageFrame
             key={chatMessage.id}
             createdAt={chatMessage.createdAt}
-            previousCreatedAt={
-              index > 0 ? messages[index - 1].createdAt : null
-            }
+            previousCreatedAt={index > 0 ? messages[index - 1].createdAt : null}
             isSystem={isSystemMessage}
             systemLabel={chatMessage.content}
             senderLabel={senderLabel}
@@ -101,13 +98,6 @@ export function EmployeeMessageList({
               >
                 <p className="whitespace-pre-wrap text-sm leading-6">
                   {chatMessage.content}
-                </p>
-                <p
-                  className={`absolute mt-1 text-right text-[10px] right-3 bottom-0 ${
-                    isEmployeeMessage ? "text-white/60" : "text-slate-400"
-                  }`}
-                >
-                  {formatMessageTime(chatMessage.createdAt)}
                 </p>
               </div>
             )}
