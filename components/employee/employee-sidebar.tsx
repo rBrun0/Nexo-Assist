@@ -89,7 +89,7 @@ export function EmployeeSidebar({
           <AlertDialog.Trigger>
             <Button
               variant="ghost"
-              onClick={onLogout}
+              // onClick={onLogout}
               disabled={isLoggingOut}
               className="h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
             >
@@ -103,18 +103,22 @@ export function EmployeeSidebar({
               Você será deslogado da sua conta.
             </AlertDialog.Description>
             <AlertDialog.Footer>
-              <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-              <AlertDialog.Action>
+              <div className="flex items-center justify-end gap-2">
+                <AlertDialog.Cancel className={"h-full"}>
+                  Cancelar
+                </AlertDialog.Cancel>
+                {/* <AlertDialog.Action> */}
                 <Button
-                  variant="ghost"
+                  variant="destructive"
                   onClick={onLogout}
                   disabled={isLoggingOut}
-                  className="mt-4 h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
+                  className="mt-4 h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500"
                 >
                   <LogOut className="size-[17px]" />
                   {isLoggingOut ? "Saindo..." : "Sair"}
                 </Button>
-              </AlertDialog.Action>
+                {/* </AlertDialog.Action> */}
+              </div>
             </AlertDialog.Footer>
           </AlertDialog.Content>
         </AlertDialog>

@@ -25,6 +25,12 @@ const ACTIVE_CHAT_STATUSES = [
   ChatStatus.HUMAN_ACTIVE,
 ];
 
+/** Fila do analista: ativas + encerradas (detalhe “Resolvida pelo …” no pen.dev). */
+const ANALYST_QUEUE_CHAT_STATUSES = [
+  ...ACTIVE_CHAT_STATUSES,
+  ChatStatus.CLOSED,
+];
+
 const countableMessageWhere = {
   sender: { not: MessageSender.SYSTEM },
 } satisfies Prisma.ChatMessageWhereInput;
@@ -33,6 +39,7 @@ const analystTicketSelect = {
   id: true,
   code: true,
   title: true,
+  description: true,
   category: true,
   priority: true,
   status: true,
@@ -63,10 +70,20 @@ const analystConversationInclude = {
     orderBy: { createdAt: "desc" },
     take: 40,
     include: {
-      senderUser: { select: { id: true, name: true, role: true } },
+      senderUser: { select: { id: true, name: true, role: true, job: true } },
     },
   },
-  ticket: { select: { id: true, code: true, title: true } },
+  ticket: {
+    select: {
+      id: true,
+      code: true,
+      title: true,
+      description: true,
+      category: true,
+      priority: true,
+      status: true,
+    },
+  },
   _count: {
     select: {
       messages: {
@@ -110,6 +127,7 @@ type AnalystTicketRow = {
   id: string;
   code: string;
   title: string;
+  description: string;
   category: string;
   priority: string;
   status: string;
@@ -132,6 +150,7 @@ function mergeEmployeeTickets(
       id: ticket.id,
       code: ticket.code,
       title: ticket.title,
+      description: ticket.description,
       category: ticket.category,
       priority: ticket.priority,
       status: ticket.status,
@@ -190,7 +209,7 @@ export async function getChatHistoryForUser(
     where: { chatSessionId: session.id },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     include: {
-      senderUser: { select: { id: true, name: true, role: true } },
+      senderUser: { select: { id: true, name: true, role: true, job: true } },
     },
   });
   return messages.map((message) => ({
@@ -251,7 +270,9 @@ export async function getEmployeeConversation(userId: string) {
         messages: {
           orderBy: { createdAt: "asc" },
           include: {
-            senderUser: { select: { id: true, name: true, role: true } },
+            senderUser: {
+              select: { id: true, name: true, role: true, job: true },
+            },
           },
         },
         ticket: true,
@@ -435,6 +456,58 @@ export async function sendManualConversationMessage(
   });
 }
 
+export async function markSessionWaitingHuman(
+  sessionId: string,
+  userId: string,
+  reason: string,
+) {
+  const now = new Date();
+  const summary = reason.slice(0, 2000);
+  const updated = await prisma.chatSession.updateMany({
+    where: {
+      id: sessionId,
+      userId,
+      status: ChatStatus.BOT_ACTIVE,
+    },
+    data: {
+      status: ChatStatus.WAITING_HUMAN,
+      assignedAnalystId: null,
+      handoffSummary: summary,
+      handoffReason: summary,
+      handoffAt: now,
+      updatedAt: now,
+    },
+  });
+
+  if (updated.count !== 1) {
+    const current = await prisma.chatSession.findFirst({
+      where: {
+        id: sessionId,
+        userId,
+        status: ChatStatus.WAITING_HUMAN,
+      },
+      select: { id: true },
+    });
+    return { applied: false, alreadyWaiting: Boolean(current) };
+  }
+
+  await createSystemMessage(
+    sessionId,
+    "Transferida para suporte N2",
+    prisma,
+    now,
+  );
+  const session = await prisma.chatSession.findUnique({
+    where: { id: sessionId },
+    select: { ticketId: true },
+  });
+  if (session?.ticketId) {
+    await transferTicketToAnalyst(session.ticketId);
+  }
+
+  return { applied: true, alreadyWaiting: false };
+}
+
 export async function saveAssistantMessage(
   sessionId: string,
   content: string,
@@ -469,10 +542,42 @@ export async function saveAssistantMessage(
       },
     });
     if (updatedSession.count !== 1) {
-      throw new ConversationError(
-        "A conversa mudou de estado antes da resposta do agente ser salva.",
-        409,
-      );
+      if (!handoffSummary) {
+        throw new ConversationError(
+          "A conversa mudou de estado antes da resposta do agente ser salva.",
+          409,
+        );
+      }
+      const current = await transaction.chatSession.findUnique({
+        where: { id: sessionId },
+        select: { status: true },
+      });
+      if (current?.status !== ChatStatus.WAITING_HUMAN) {
+        throw new ConversationError(
+          "A conversa mudou de estado antes da resposta do agente ser salva.",
+          409,
+        );
+      }
+      const kept = await transaction.chatSession.updateMany({
+        where: { id: sessionId, status: ChatStatus.WAITING_HUMAN },
+        data: { confidenceScore, updatedAt: now },
+      });
+      if (kept.count !== 1) {
+        throw new ConversationError(
+          "A conversa mudou de estado antes da resposta do agente ser salva.",
+          409,
+        );
+      }
+      return transaction.chatMessage.create({
+        data: {
+          chatSessionId: sessionId,
+          sender: MessageSender.ASSISTANT,
+          content,
+          thoughtProcess,
+          metadata,
+          readAtByEmployee: new Date(),
+        },
+      });
     }
 
     const message = await transaction.chatMessage.create({
@@ -588,6 +693,7 @@ export async function getEmployeeTicketsForAgent(userId: string) {
       status: true,
       slaDeadline: true,
       isOverdue: true,
+      createdAt: true,
       updatedAt: true,
     },
     orderBy: { updatedAt: "desc" },
@@ -672,10 +778,23 @@ export async function createTicketFromDraft(
     throw new ConversationError("Este rascunho já foi confirmado.", 409);
   }
 
-  const result = await createTicketForUser(userId, {
-    ...draft.data,
-    confirmed: true,
-  });
+  const workflowRunId =
+    typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
+  const result = workflowRunId
+    ? await (async () => {
+        const { resumeOpenTicketRun } = await import(
+          "@/lib/mastra/resume-open-ticket"
+        );
+        const resumed = await resumeOpenTicketRun(workflowRunId, true);
+        if (resumed.cancelled || !resumed.outcome) {
+          throw new ConversationError("Não foi possível gravar o chamado.", 502);
+        }
+        return { ticket: resumed.ticket, outcome: resumed.outcome };
+      })()
+    : await createTicketForUser(userId, {
+        ...draft.data,
+        confirmed: true,
+      });
 
   const responseContent = !result.ticket
     ? "Pronto, registrei você como também afetado pelo chamado existente e atualizei a prioridade."
@@ -726,6 +845,18 @@ export async function createTicketFromDraft(
       updatedAt: new Date(),
     },
   });
+
+  const confirmedPriority = result.ticket?.priority ?? draft.data.priority;
+  if (confirmedPriority === "CRITICAL" && result.ticket) {
+    if (session.status === ChatStatus.BOT_ACTIVE) {
+      await requestAnalystHandoff(
+        userId,
+        `Chamado ${result.ticket.code} classificado como crítico.`,
+      );
+    } else if (session.status === ChatStatus.WAITING_HUMAN) {
+      await transferTicketToAnalyst(result.ticket.id);
+    }
+  }
 
   return {
     outcome: result.outcome,
@@ -795,6 +926,19 @@ export async function cancelTicketDraft(
     throw new ConversationError("Este rascunho já foi cancelado.", 409);
   }
 
+  const workflowRunId =
+    typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
+  if (workflowRunId) {
+    try {
+      const { resumeOpenTicketRun } = await import(
+        "@/lib/mastra/resume-open-ticket"
+      );
+      await resumeOpenTicketRun(workflowRunId, false);
+    } catch (error) {
+      console.error("Falha ao encerrar o workflow do rascunho:", error);
+    }
+  }
+
   const [userMessage, assistantMessage] = await prisma.$transaction([
     prisma.chatMessage.create({
       data: {
@@ -835,11 +979,11 @@ export async function cancelTicketDraft(
 }
 
 export async function listAnalystConversations() {
-  // Só ativas com pelo menos uma mensagem: evita vazias criadas por login
-  // e não polui a fila com conversas encerradas.
+  // Ativas + encerradas com mensagem: vazias de login ficam de fora;
+  // encerradas alimentam “Resolvida pelo agente/analista” em Todas.
   const sessions = await prisma.chatSession.findMany({
     where: {
-      status: { in: ACTIVE_CHAT_STATUSES },
+      status: { in: ANALYST_QUEUE_CHAT_STATUSES },
       messages: { some: {} },
     },
     include: analystConversationInclude,
@@ -878,6 +1022,7 @@ export async function getAnalystConversation(sessionId: string) {
           id: true,
           code: true,
           title: true,
+          description: true,
           type: true,
           category: true,
           priority: true,

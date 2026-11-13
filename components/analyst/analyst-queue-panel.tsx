@@ -88,7 +88,7 @@ export function AnalystQueuePanel({
               className={cn(
                 "h-7 shrink-0 rounded-full px-2.5 text-[11px]",
                 conversationFilter === filter.id
-                  ? "bg-[#006AC71A] text-brand-logo hover:bg-[#006AC71A]/80" // TODO -> Criar varíavel primary-soft
+                  ? "bg-brand-logo-soft text-brand-logo hover:bg-brand-logo-soft/80"
                   : "bg-zinc-100 text-zinc-500",
               )}
             >

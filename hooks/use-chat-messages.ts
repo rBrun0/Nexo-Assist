@@ -31,6 +31,7 @@ export function buildOptimisticEmployeeMessage({
       id: employee.id,
       name: employee.name,
       role: "EMPLOYEE",
+      job: null,
     },
     content,
     thoughtProcess: null,

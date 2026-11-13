@@ -21,7 +21,7 @@ export function ChatOptionChips({
           type="button"
           disabled={disabled}
           onClick={() => onSelect(option)}
-          className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-[11px] font-medium text-brand-action hover:bg-blue-50 disabled:opacity-50"
+          className="rounded-md border bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
         >
           {option.label}
         </button>

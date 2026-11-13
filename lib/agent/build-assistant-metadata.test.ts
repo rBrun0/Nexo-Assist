@@ -20,6 +20,7 @@ const ticketA = {
   status: "OPEN",
   priority: "HIGH",
   category: "NETWORK_VPN",
+  createdAt: "2026-10-16T12:00:00.000Z",
   updatedAt: "2026-10-16T15:00:00.000Z",
   isOverdue: false,
   slaDeadline: new Date("2026-11-08T18:00:00.000Z"),

@@ -35,14 +35,13 @@ export function filterAnalystConversations({
   const matchesFilter = CONVERSATION_FILTERS[conversationFilter];
 
   return conversations.filter((conversation) => {
-    if (conversation.status === "Encerrada") return false;
-
     const matchesSearch =
       !query ||
       `${conversation.name} ${conversation.job ?? ""} ${conversation.department} ${conversation.preview}`
         .toLocaleLowerCase("pt-BR")
         .includes(query);
 
+    // Encerradas só em "Todas" (predicates dos outros filtros não as incluem).
     return matchesSearch && matchesFilter(conversation, currentAnalystId);
   });
 }

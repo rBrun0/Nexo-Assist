@@ -97,6 +97,12 @@ export async function POST(request: Request) {
       parsed.data.selectedTicketId
     );
 
+    console.info("[conversa] POST mensagem", {
+      conversationId: session.id,
+      status: session.status,
+      shouldRunAgent,
+    });
+
     if (shouldRunAgent) {
       const agentResponse = await runServiceDeskAgent({
         userId: user.id,
@@ -105,6 +111,20 @@ export async function POST(request: Request) {
         selectedTicketId: parsed.data.selectedTicketId,
       });
       if (agentResponse) return agentResponse;
+      console.info("[conversa] agente não gerou stream", {
+        conversationId: session.id,
+        status: session.status,
+        motivo: "runServiceDeskAgent retornou null (sessão não está BOT_ACTIVE)",
+      });
+    } else {
+      console.info("[conversa] agente pulado", {
+        conversationId: session.id,
+        status: session.status,
+        motivo:
+          session.status === "BOT_ACTIVE"
+            ? "shouldRunAgent falso"
+            : `status ${session.status}`,
+      });
     }
 
     const stream = createUIMessageStream<ServiceDeskUIMessage>({

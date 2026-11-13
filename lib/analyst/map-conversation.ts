@@ -15,6 +15,7 @@ export type AnalystTicketItem = {
   id: string;
   code: string;
   title: string;
+  description: string;
   category: string;
   priority: "Alta" | "Média" | "Baixa" | "Crítica";
   status: string;
@@ -26,7 +27,12 @@ export type AnalystChatMessage = {
   id: string;
   author: "employee" | "analyst" | "assistant" | "system";
   senderUserId: string | null;
-  senderUser: { id: string; name: string; role: "EMPLOYEE" | "ANALYST" } | null;
+  senderUser: {
+    id: string;
+    name: string;
+    role: "EMPLOYEE" | "ANALYST";
+    job: string | null;
+  } | null;
   text: string;
   time: string;
   createdAt: string;
@@ -38,6 +44,11 @@ export type AnalystConversationTicket = {
   id: string;
   code: string;
   title: string;
+  description: string;
+  category: string;
+  priority: AnalystTicketItem["priority"];
+  status: string;
+  statusKey: string;
 } | null;
 
 export type AnalystConversationListItem = {
@@ -49,6 +60,8 @@ export type AnalystConversationListItem = {
   department: string;
   preview: string;
   time: string;
+  /** ISO da última mensagem — formatar na UI com `formatQueueTime`. */
+  lastMessageAt: string | null;
   unread: number;
   status: "Aguardando" | "Em atendimento" | "Com o agente" | "Encerrada";
   assignedTo: string | null;
@@ -129,6 +142,19 @@ export function mapConversation(
         id: record.ticket.id,
         code: record.ticket.code,
         title: record.ticket.title,
+        description: record.ticket.description ?? "",
+        category: record.ticket.category
+          ? formatTicketCategoryLabel(record.ticket.category)
+          : "—",
+        priority: record.ticket.priority
+          ? mapPriorityLabel(record.ticket.priority)
+          : ("Baixa" as const),
+        status: record.ticket.status
+          ? formatTicketStatusLabel(record.ticket.status)
+          : "Aguardando analista",
+        statusKey: record.ticket.status
+          ? normalizeTicketStatusKey(record.ticket.status)
+          : "WAITING_ANALYST",
       }
     : null;
 
@@ -141,6 +167,7 @@ export function mapConversation(
     department: record.user.job?.trim() || record.user.email,
     preview: lastMessage?.content ?? record.handoffSummary ?? "Nova conversa",
     time: lastMessage ? formatMessageTime(lastMessage.createdAt) : "",
+    lastMessageAt: lastMessage?.createdAt ?? null,
     unread: record.unreadCount,
     status,
     assignedTo: record.assignedAnalyst?.name ?? null,
@@ -160,6 +187,7 @@ export function mapConversation(
       id: ticket.id,
       code: ticket.code,
       title: ticket.title,
+      description: ticket.description ?? "",
       category: formatTicketCategoryLabel(ticket.category),
       priority: mapPriorityLabel(ticket.priority),
       status: formatTicketStatusLabel(ticket.status),
@@ -199,8 +227,8 @@ const TONE_CLASSES: Record<
     dot: "bg-emerald-300",
   },
   bot: {
-    chip: "bg-blue-100 text-blue-500",
-    text: "text-blue-500",
+    chip: "bg-blue-100 text-zinc-800",
+    text: "text-zinc-800",
     dot: "bg-blue-300",
   },
   closed: {

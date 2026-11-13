@@ -16,7 +16,9 @@
   --color-brand-action: var(--brand-action);
   --color-brand-action-hover: var(--brand-action-hover);
   --color-brand-logo: var(--brand-logo);
+  --color-brand-logo-soft: var(--brand-logo-soft);
   --color-brand-nav-active: var(--brand-nav-active);
+  --color-chat-analyst: var(--chat-analyst);
   --color-warning: var(--warning);
   --color-warning-text: var(--warning-text);
   --color-success: var(--success);
@@ -27,6 +29,7 @@
   --color-surface-subtle: var(--surface-subtle);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
+  --color-primary-soft: var(--primary-soft);
   --color-desk: var(--desk);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -73,7 +76,8 @@
 }
 
 :root {
-  --font-sans: var(--font-schibsted), -apple-system, BlinkMacSystemFont, "Segoe UI",
+  --font-sans:
+    var(--font-schibsted), -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
@@ -81,10 +85,15 @@
   --brand-action: #0062c4;
   --brand-action-hover: #004f9e;
   --brand-logo: #037af6;
+  --brand-logo-soft: color-mix(in srgb, var(--brand-logo) 10%, transparent);
   --brand-nav-active: #006ac7;
+
+  /* Chat bubbles */
+  --chat-analyst: #e4f5eb;
 
   /* Semantic */
   --primary: #0285f7;
+  --primary-soft: #e4f5eb;
   --success: #00bd6b;
   --warning: #f5a300;
   --warning-text: #946300;

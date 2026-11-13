@@ -144,26 +144,34 @@ export function useEmployeeConversation({
         );
       }
     },
-    onFinish: () => {
+    onFinish: ({ isAbort, isError }) => {
       clearStreamTimeout();
-      streamStartedAtRef.current = null;
       setAgentActivitySteps([]);
-      setStreamedMessages([]);
+      if (!streamedResponseTextRef.current.trim()) {
+        streamStartedAtRef.current = null;
+      }
       void Promise.all([
         loadConversationRef.current?.() ?? Promise.resolve(),
         chatHistoryRefetchRef.current?.() ?? Promise.resolve(),
-      ]).catch((error: unknown) => {
-        console.error(
-          "Falha ao carregar conversa após a resposta do agente:",
-          {
-            conversationId: conversationRef.current?.id ?? null,
-            error,
-          },
-        );
-        setConversationError(
-          "A resposta chegou, mas não foi possível atualizar o histórico.",
-        );
-      });
+      ])
+        .then(() => {
+          optimisticMessageIdRef.current = null;
+          setPendingLocalMessage(null);
+        })
+        .catch((error: unknown) => {
+          console.error(
+            "Falha ao carregar conversa após a resposta do agente:",
+            {
+              conversationId: conversationRef.current?.id ?? null,
+              error,
+            },
+          );
+          if (!isError && !isAbort) {
+            setConversationError(
+              "A resposta chegou, mas não foi possível atualizar o histórico.",
+            );
+          }
+        });
     },
     onError: (error) => {
       clearStreamTimeout();
@@ -176,18 +184,10 @@ export function useEmployeeConversation({
         hadStreamedText: Boolean(streamedResponseTextRef.current.trim()),
         error,
       });
-      streamStartedAtRef.current = null;
-      setAgentActivitySteps([]);
-      setStreamedMessages([]);
-      const optimisticId = optimisticMessageIdRef.current;
-      if (optimisticId && conversationRef.current?.id) {
-        removeOptimisticRef.current?.(
-          optimisticId,
-          conversationRef.current.id,
-        );
+      if (!streamedResponseTextRef.current.trim()) {
+        streamStartedAtRef.current = null;
       }
-      optimisticMessageIdRef.current = null;
-      setPendingLocalMessage(null);
+      setAgentActivitySteps([]);
       setConversationError(
         error instanceof Error && error.message.trim()
           ? error.message
@@ -196,12 +196,17 @@ export function useEmployeeConversation({
       void Promise.all([
         loadConversationRef.current?.() ?? Promise.resolve(),
         chatHistoryRefetchRef.current?.() ?? Promise.resolve(),
-      ]).catch((loadError: unknown) => {
-        console.error("Falha ao atualizar conversa após erro do agente:", {
-          conversationId: conversationRef.current?.id ?? null,
-          loadError,
+      ])
+        .then(() => {
+          optimisticMessageIdRef.current = null;
+          setPendingLocalMessage(null);
+        })
+        .catch((loadError: unknown) => {
+          console.error("Falha ao atualizar conversa após erro do agente:", {
+            conversationId: conversationRef.current?.id ?? null,
+            loadError,
+          });
         });
-      });
     },
   });
 
@@ -299,6 +304,27 @@ export function useEmployeeConversation({
   ]);
 
   useEffect(() => {
+    const streamed = streamedResponseText.trim();
+    if (!streamed) return;
+    const lastEmployeeIndex = messages.findLastIndex(
+      (item) => item.sender === "EMPLOYEE",
+    );
+    const assistant = messages
+      .slice(lastEmployeeIndex + 1)
+      .find((item) => item.sender === "ASSISTANT");
+    if (!assistant) return;
+    const opening = streamed.slice(0, 160);
+    if (
+      assistant.content.trim() !== streamed &&
+      !assistant.content.includes(opening)
+    ) {
+      return;
+    }
+    setStreamedMessages([]);
+    streamStartedAtRef.current = null;
+  }, [messages, streamedResponseText, setStreamedMessages]);
+
+  useEffect(() => {
     if (!enabled) return;
 
     let cancelled = false;
@@ -338,13 +364,21 @@ export function useEmployeeConversation({
     if (!trimmedMessage || isSendingMessage || isAtMessageLimit) return;
 
     setConversationError("");
-    setAgentActivitySteps([
-      {
-        id: "sending",
-        label: "Enviando sua mensagem...",
-        status: "running",
-      },
-    ]);
+    const humanHandoff = isHumanHandoffStatus(conversation?.status);
+    if (!humanHandoff) {
+      setAgentActivitySteps([
+        {
+          id: "sending",
+          label: "Enviando sua mensagem...",
+          status: "running",
+        },
+      ]);
+    }
+    console.info("[chat funcionário] envio", {
+      conversationId: conversation?.id ?? null,
+      status: conversation?.status ?? null,
+      caminho: humanHandoff ? "manual" : "agente",
+    });
     const ticketId = asOptionalTicketId(ticketIdOverride ?? selectedTicketId);
     setMessage("");
 
@@ -409,20 +443,15 @@ export function useEmployeeConversation({
           streamStartedAtRef.current = null;
           setAgentActivitySteps([]);
           setStreamedMessages([]);
-          const optimisticId = optimisticMessageIdRef.current;
-          if (optimisticId && conversationRef.current?.id) {
-            chatHistory.removeOptimistic(
-              optimisticId,
-              conversationRef.current.id,
-            );
-          }
-          optimisticMessageIdRef.current = null;
-          setPendingLocalMessage(null);
           setConversationError(
             "A resposta demorou demais. Tente enviar novamente.",
           );
-          void Promise.all([loadConversation(), chatHistory.refetch()]).catch(
-            (loadError: unknown) => {
+          void Promise.all([loadConversation(), chatHistory.refetch()])
+            .then(() => {
+              optimisticMessageIdRef.current = null;
+              setPendingLocalMessage(null);
+            })
+            .catch((loadError: unknown) => {
               console.error(
                 "Falha ao atualizar conversa após timeout do stream:",
                 {
@@ -430,8 +459,7 @@ export function useEmployeeConversation({
                   loadError,
                 },
               );
-            },
-          );
+            });
         })();
       }, CLIENT_STREAM_TIMEOUT_MS);
 
@@ -455,16 +483,25 @@ export function useEmployeeConversation({
       });
       streamStartedAtRef.current = null;
       setAgentActivitySteps([]);
-      if (sessionId) {
-        chatHistory.removeOptimistic(optimisticMessage.id, sessionId);
-      }
-      optimisticMessageIdRef.current = null;
-      setPendingLocalMessage(null);
       setConversationError(
         error instanceof Error
           ? error.message
           : "Não foi possível enviar a mensagem.",
       );
+      void Promise.all([
+        loadConversation(),
+        sessionId ? chatHistory.refetch() : Promise.resolve(),
+      ])
+        .then(() => {
+          optimisticMessageIdRef.current = null;
+          setPendingLocalMessage(null);
+        })
+        .catch((loadError: unknown) => {
+          console.error("Falha ao atualizar conversa após erro de envio:", {
+            conversationId: sessionId,
+            loadError,
+          });
+        });
     } finally {
       setIsSendingManualMessage(false);
     }
@@ -583,6 +620,10 @@ export function useEmployeeConversation({
     conversationError,
     agentActivitySteps,
     isSendingMessage,
+    isAwaitingAssistant:
+      Boolean(streamedResponseText.trim()) ||
+      (!isSendingManualMessage &&
+        (chatStatus === "submitted" || chatStatus === "streaming")),
     isRequestingAnalyst,
     streamedResponseText,
     statusBadge,

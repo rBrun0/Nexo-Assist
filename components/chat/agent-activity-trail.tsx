@@ -16,7 +16,10 @@ export function AgentActivityTrail({
 
   return (
     <ul
-      className={cn("px-1 flex items-center gap-1", className)}
+      className={cn(
+        "flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 px-1",
+        className,
+      )}
       aria-live="polite"
       aria-relevant="additions text"
     >
@@ -26,16 +29,16 @@ export function AgentActivityTrail({
           <li
             key={step.id}
             className={cn(
-              "flex items-center gap-1 text-[11px] leading-4 transition-opacity",
-              isRunning ? "text-slate-500" : "text-slate-500",
+              "flex max-w-full items-center gap-1 text-[11px] leading-4 text-slate-500",
+              isRunning && "text-slate-500",
             )}
           >
             {isRunning ? (
               <LoaderCircle className="size-3 shrink-0 animate-spin text-brand-action/70" />
             ) : (
-              <Check className="size-3 shrink-0 text-slate-500" />
+              <Check className="size-3 shrink-0 text-zinc-500" />
             )}
-            <span className={cn(isRunning && "animate-pulse")}>
+            <span className={cn("min-w-0 break-words", isRunning && "animate-pulse")}>
               {step.label}
             </span>
           </li>

@@ -25,6 +25,11 @@ export const ANALYST_OPTION: ChatOption = {
   message: "Quero falar com um analista.",
 };
 
+function toIsoOptional(value?: string | Date) {
+  if (!value) return undefined;
+  return value instanceof Date ? value.toISOString() : value;
+}
+
 function toChoiceItem(ticket: {
   id: string;
   code: string;
@@ -32,12 +37,11 @@ function toChoiceItem(ticket: {
   status: string;
   priority: string;
   category: string;
+  createdAt?: string | Date;
   updatedAt?: string | Date;
 }): TicketChoiceItem {
-  const updatedAt =
-    ticket.updatedAt instanceof Date
-      ? ticket.updatedAt.toISOString()
-      : ticket.updatedAt;
+  const createdAt = toIsoOptional(ticket.createdAt);
+  const updatedAt = toIsoOptional(ticket.updatedAt);
 
   return {
     id: ticket.id,
@@ -46,6 +50,7 @@ function toChoiceItem(ticket: {
     status: ticket.status,
     priority: ticket.priority,
     category: ticket.category,
+    ...(createdAt ? { createdAt } : {}),
     ...(updatedAt ? { updatedAt } : {}),
   };
 }
@@ -149,6 +154,15 @@ export function buildAssistantMetadata({
       kind: "ticket_draft",
       draft: draftAction.draft,
       options: [],
+      ...(draftAction.workflowRunId
+        ? { workflowRunId: draftAction.workflowRunId }
+        : {}),
+      ...(draftAction.duplicateMatch
+        ? { duplicateMatch: draftAction.duplicateMatch }
+        : {}),
+      ...(draftAction.duplicateCode
+        ? { duplicateCode: draftAction.duplicateCode }
+        : {}),
     });
     return metadata as Prisma.InputJsonObject;
   }

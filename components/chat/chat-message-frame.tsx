@@ -20,6 +20,8 @@ export function ChatMessageFrame({
   senderLabel,
   senderLabelClassName,
   thoughtProcess,
+  thoughtHeaderLayout = "stacked",
+  messageId,
   alignEnd,
   children,
 }: {
@@ -27,9 +29,11 @@ export function ChatMessageFrame({
   previousCreatedAt: string | null;
   isSystem: boolean;
   systemLabel: string;
-  senderLabel: string | null;
+  senderLabel: ReactNode;
   senderLabelClassName?: string;
   thoughtProcess?: unknown;
+  thoughtHeaderLayout?: "stacked" | "inline" | "label-start";
+  messageId?: string;
   alignEnd: boolean;
   children: ReactNode;
 }) {
@@ -38,6 +42,9 @@ export function ChatMessageFrame({
     ? getChatDayKey(previousCreatedAt)
     : null;
   const showDaySeparator = dayKey !== previousDayKey;
+  const hasThought = thoughtProcess !== undefined;
+  const inlineHeader = thoughtHeaderLayout === "inline";
+  const labelStartHeader = thoughtHeaderLayout === "label-start";
 
   return (
     <motion.div
@@ -54,26 +61,78 @@ export function ChatMessageFrame({
       ) : (
         <div className={cn("flex", alignEnd ? "justify-end" : "justify-start")}>
           <div className="min-w-0 w-full max-w-[min(92%,720px)]">
-            <div
-              className={cn(
-                "flex items-center gap-1 py-0.5",
-                alignEnd && "justify-end",
-              )}
-            >
-              {senderLabel ? (
-                <p
-                  className={cn(
-                    "mb-1 px-1 text-[11px] font-medium",
-                    senderLabelClassName,
-                  )}
-                >
-                  {senderLabel}
-                </p>
-              ) : null}
-              {thoughtProcess !== undefined ? (
-                <ThoughtProcessBlock thoughtProcess={thoughtProcess} />
-              ) : null}
-            </div>
+            {inlineHeader ? (
+              <div
+                className={cn(
+                  "relative mb-1 min-h-6 py-0.5",
+                  senderLabel && "pr-[7.5rem]",
+                )}
+              >
+                {hasThought ? (
+                  <ThoughtProcessBlock
+                    thoughtProcess={thoughtProcess}
+                    messageId={messageId}
+                    className="mb-0"
+                  />
+                ) : null}
+                {senderLabel ? (
+                  <p
+                    className={cn(
+                      "absolute top-0.5 right-0 z-[1] px-1 text-[11px] font-medium",
+                      senderLabelClassName,
+                    )}
+                  >
+                    {senderLabel}
+                  </p>
+                ) : null}
+              </div>
+            ) : labelStartHeader ? (
+              <div className="mb-1 flex min-w-0 items-center gap-3 py-0.5">
+                {senderLabel ? (
+                  <p
+                    className={cn(
+                      "shrink-0 px-1 text-[11px] font-medium",
+                      senderLabelClassName,
+                    )}
+                  >
+                    {senderLabel}
+                  </p>
+                ) : null}
+                {hasThought ? (
+                  <ThoughtProcessBlock
+                    thoughtProcess={thoughtProcess}
+                    messageId={messageId}
+                    className="mb-0 min-w-0 flex-1"
+                  />
+                ) : null}
+              </div>
+            ) : (
+              <>
+                {hasThought ? (
+                  <ThoughtProcessBlock
+                    thoughtProcess={thoughtProcess}
+                    messageId={messageId}
+                  />
+                ) : null}
+                {senderLabel ? (
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 py-0.5",
+                      alignEnd && "justify-end",
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "px-1 text-[11px] font-medium",
+                        senderLabelClassName,
+                      )}
+                    >
+                      {senderLabel}
+                    </p>
+                  </div>
+                ) : null}
+              </>
+            )}
             {children}
           </div>
         </div>

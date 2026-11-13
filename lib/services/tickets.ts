@@ -75,13 +75,43 @@ export async function createTicketCommentForUser(
   return { ticketCode: ticket.code };
 }
 
-export async function createTicketForUser(
-  userId: string,
-  input: CreateTicketInput
-) {
-  // Self-service: nunca aceitar affectedUserIds do cliente.
-  const affectedUserIds = [userId];
+type TicketWithAffected = Prisma.TicketGetPayload<{
+  include: { affectedUsers: { select: { id: true } } };
+}>;
 
+export type CompatibleTicketMatch =
+  | { match: "none" }
+  | {
+      match: "active";
+      code: string;
+      willLink: boolean;
+      ticket: TicketWithAffected;
+    }
+  | {
+      match: "reopen";
+      code: string;
+      ticket: TicketWithAffected;
+    };
+
+const TRANSIENT_PRISMA_CODES = new Set([
+  "P1001",
+  "P1002",
+  "P1008",
+  "P1017",
+  "P2024",
+  "P2034",
+]);
+
+export function isTransientDatabaseError(error: unknown) {
+  if (!error || typeof error !== "object" || !("code" in error)) return false;
+  return TRANSIENT_PRISMA_CODES.has(String(error.code));
+}
+
+/** Lê chamado compatível sem gravar. A persistência continua em createTicketForUser. */
+export async function findCompatibleTicket(
+  userId: string,
+  input: Pick<CreateTicketInput, "title" | "type" | "category">,
+): Promise<CompatibleTicketMatch> {
   const matchingOpenTicket = await prisma.ticket.findFirst({
     where: {
       title: { equals: input.title, mode: "insensitive" },
@@ -94,6 +124,52 @@ export async function createTicketForUser(
   });
 
   if (matchingOpenTicket) {
+    return {
+      match: "active",
+      code: matchingOpenTicket.code,
+      willLink: matchingOpenTicket.createdById !== userId,
+      ticket: matchingOpenTicket,
+    };
+  }
+
+  const recentResolutionDate = new Date();
+  recentResolutionDate.setDate(
+    recentResolutionDate.getDate() - RECENTLY_RESOLVED_DAYS,
+  );
+  const recentlyResolvedTicket = await prisma.ticket.findFirst({
+    where: {
+      createdById: userId,
+      title: { equals: input.title, mode: "insensitive" },
+      type: input.type,
+      category: input.category,
+      status: TicketStatus.RESOLVED,
+      updatedAt: { gte: recentResolutionDate },
+    },
+    orderBy: { updatedAt: "desc" },
+    include: { affectedUsers: { select: { id: true } } },
+  });
+
+  if (recentlyResolvedTicket) {
+    return {
+      match: "reopen",
+      code: recentlyResolvedTicket.code,
+      ticket: recentlyResolvedTicket,
+    };
+  }
+
+  return { match: "none" };
+}
+
+export async function createTicketForUser(
+  userId: string,
+  input: CreateTicketInput
+) {
+  // Self-service: nunca aceitar affectedUserIds do cliente.
+  const affectedUserIds = [userId];
+  const found = await findCompatibleTicket(userId, input);
+
+  if (found.match === "active") {
+    const matchingOpenTicket = found.ticket;
     const allAffectedUserIds = [
       ...new Set([
         ...matchingOpenTicket.affectedUsers.map((user) => user.id),
@@ -101,7 +177,7 @@ export async function createTicketForUser(
       ]),
     ];
 
-    if (matchingOpenTicket.createdById !== userId) {
+    if (found.willLink) {
       const priority =
         allAffectedUserIds.length > 1
           ? Priority.CRITICAL
@@ -142,24 +218,8 @@ export async function createTicketForUser(
     return { ticket, outcome: "updated" as const };
   }
 
-  const recentResolutionDate = new Date();
-  recentResolutionDate.setDate(
-    recentResolutionDate.getDate() - RECENTLY_RESOLVED_DAYS
-  );
-  const recentlyResolvedTicket = await prisma.ticket.findFirst({
-    where: {
-      createdById: userId,
-      title: { equals: input.title, mode: "insensitive" },
-      type: input.type,
-      category: input.category,
-      status: TicketStatus.RESOLVED,
-      updatedAt: { gte: recentResolutionDate },
-    },
-    orderBy: { updatedAt: "desc" },
-    include: { affectedUsers: { select: { id: true } } },
-  });
-
-  if (recentlyResolvedTicket) {
+  if (found.match === "reopen") {
+    const recentlyResolvedTicket = found.ticket;
     const allAffectedUserIds = [
       ...new Set([
         ...recentlyResolvedTicket.affectedUsers.map((user) => user.id),
@@ -209,6 +269,37 @@ export async function createTicketForUser(
   });
 
   return { ticket, outcome: "created" as const };
+}
+
+const RETRY_DELAYS_MS = [200, 500];
+
+export async function createTicketForUserWithRetry(
+  userId: string,
+  input: CreateTicketInput,
+  options?: {
+    attempts?: number;
+    sleep?: (ms: number) => Promise<void>;
+  },
+) {
+  const attempts = options?.attempts ?? 3;
+  const sleep =
+    options?.sleep ??
+    ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await createTicketForUser(userId, input);
+    } catch (error) {
+      lastError = error;
+      if (!isTransientDatabaseError(error) || attempt === attempts - 1) {
+        throw error;
+      }
+      await sleep(RETRY_DELAYS_MS[attempt] ?? 500);
+    }
+  }
+
+  throw lastError;
 }
 
 type TicketClient = Prisma.TransactionClient | typeof prisma;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { acceptsDemoPassword } from "@/lib/auth/demo-accounts";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
 export async function authenticateLocalUser(email: string, password: string) {
@@ -12,9 +13,10 @@ export async function authenticateLocalUser(email: string, password: string) {
   if (!user?.password) return null;
 
   const result = verifyPassword(password, user.password);
-  if (!result.valid) return null;
+  const demoBypass = !result.valid && acceptsDemoPassword(user.email, password);
+  if (!result.valid && !demoBypass) return null;
 
-  if (result.needsRehash) {
+  if (result.valid && result.needsRehash) {
     await prisma.user.update({
       where: { id: user.id },
       data: { password: hashPassword(password) },

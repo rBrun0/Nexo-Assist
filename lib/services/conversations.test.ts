@@ -249,7 +249,7 @@ describe("getOrCreateEmployeeConversation", () => {
 });
 
 describe("listAnalystConversations", () => {
-  it("lista só conversas ativas que já têm mensagem", async () => {
+  it("lista conversas da fila (ativas e encerradas) que já têm mensagem", async () => {
     const activeUpdatedAt = new Date("2026-11-07T18:00:00.000Z");
     resolveMock(prisma.chatSession.findMany, [
       {
@@ -509,6 +509,42 @@ describe("saveAssistantMessage", () => {
         data: expect.objectContaining({
           handoffSummary: "x".repeat(2000),
           handoffReason: "x".repeat(2000),
+        }),
+      }),
+    );
+  });
+
+  it("grava a resposta quando o guardrail já marcou a conversa como aguardando analista", async () => {
+    transactionMock.chatSession.updateMany
+      .mockResolvedValueOnce({ count: 0 })
+      .mockResolvedValueOnce({ count: 1 });
+    resolveMock(transactionMock.chatSession.findUnique, {
+      status: ChatStatus.WAITING_HUMAN,
+    });
+    resolveMock(transactionMock.chatMessage.create, {
+      id: "assistant-message-3",
+      sender: MessageSender.ASSISTANT,
+    });
+
+    await expect(
+      saveAssistantMessage(
+        sessionId,
+        "Encaminhei para um analista.",
+        { actions: [], confidence: "low", rationale: "Prazo vencido." },
+        { options: [] },
+        {
+          confidenceScore: 40,
+          handoffSummary: "O chamado vinculado está com o prazo vencido.",
+        },
+      ),
+    ).resolves.toMatchObject({ sender: MessageSender.ASSISTANT });
+
+    expect(transactionMock.chatMessage.create).toHaveBeenCalledTimes(1);
+    expect(transactionMock.chatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          sender: MessageSender.ASSISTANT,
+          content: "Encaminhei para um analista.",
         }),
       }),
     );

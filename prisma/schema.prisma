@@ -56,18 +56,19 @@ enum MessageSender {
 }
 
 model User {
-  id               String        @id @default(uuid())
-  email            String        @unique
+  id               String          @id @default(uuid())
+  email            String          @unique
   password         String?
   name             String
   job              String?
-  role             Role          @default(EMPLOYEE)
-  tickets          Ticket[]      @relation("CreatedTickets")
-  affectedTickets  Ticket[]      @relation("AffectedUsers")
+  role             Role            @default(EMPLOYEE)
+  tickets          Ticket[]        @relation("CreatedTickets")
+  affectedTickets  Ticket[]        @relation("AffectedUsers")
   chats            ChatSession[]
-  assignedChats    ChatSession[] @relation("AssignedAnalyst")
-  sentChatMessages ChatMessage[] @relation("ChatMessageSender")
-  createdAt        DateTime      @default(now())
+  assignedChats    ChatSession[]   @relation("AssignedAnalyst")
+  sentChatMessages ChatMessage[]   @relation("ChatMessageSender")
+  agentFeedbacks   AgentFeedback[]
+  createdAt        DateTime        @default(now())
 }
 
 model Ticket {
@@ -134,21 +135,38 @@ model ChatSession {
 }
 
 model ChatMessage {
-  id               String        @id @default(uuid())
+  id               String          @id @default(uuid())
   chatSessionId    String
-  chatSession      ChatSession   @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  chatSession      ChatSession     @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
   sender           MessageSender
   senderUserId     String?
-  senderUser       User?         @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderUser       User?           @relation("ChatMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
   content          String
   thoughtProcess   Json? // User-facing action summary, rationale, and confidence
   metadata         Json? // Cards de rascunho e ações rápidas
   readAtByEmployee DateTime?
   readAtByAnalyst  DateTime?
-  createdAt        DateTime      @default(now())
+  createdAt        DateTime        @default(now())
+  agentFeedbacks   AgentFeedback[]
 
   @@index([chatSessionId, createdAt])
   @@index([chatSessionId, sender, readAtByAnalyst])
   @@index([chatSessionId, sender, readAtByEmployee])
   @@index([senderUserId])
+}
+
+/** Sinal de contestação do contexto do agente (evals / governança). */
+model AgentFeedback {
+  id            String      @id @default(uuid())
+  messageId     String
+  message       ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatSessionId String
+  note          String?
+  createdAt     DateTime    @default(now())
+
+  @@unique([messageId, userId])
+  @@index([chatSessionId, createdAt])
+  @@index([userId, createdAt])
 }

@@ -72,6 +72,10 @@ export function EmployeeMessageList({
             thoughtProcess={
               isAssistantMessage ? chatMessage.thoughtProcess : undefined
             }
+            messageId={isAssistantMessage ? chatMessage.id : undefined}
+            thoughtHeaderLayout={
+              isAssistantMessage ? "label-start" : "stacked"
+            }
             alignEnd={isEmployeeMessage}
           >
             {isAssistantMessage ? (
@@ -90,13 +94,15 @@ export function EmployeeMessageList({
               />
             ) : (
               <div
-                className={`relative rounded-xl px-4 py-2.5 shadow-sm ${
+                className={`relative rounded-xl px-4 py-2.5 ${
                   isEmployeeMessage
                     ? "rounded-br-sm bg-chat-user text-white"
                     : "rounded-tl-md border border-slate-200 bg-white text-slate-700"
                 }`}
               >
-                <p className="whitespace-pre-wrap text-sm leading-6">
+                <p className="whitespace-pre-wrap text-[14.5px] leading-6">
+                  {" "}
+                  {/* TODO -> Definir esse tamanho de letra pra fonte padrão do chat */}
                   {chatMessage.content}
                 </p>
               </div>
@@ -104,7 +110,7 @@ export function EmployeeMessageList({
           </ChatMessageFrame>
         );
       })}
-      {isSendingMessage ? (
+      {isSendingMessage || streamedResponseText ? (
         <motion.div
           className="flex justify-start"
           initial={{ opacity: 0, y: 8 }}
@@ -112,10 +118,15 @@ export function EmployeeMessageList({
           transition={{ duration: 0.18, ease: "easeOut" }}
         >
           <div className="min-w-0 w-full max-w-[min(92%,720px)]">
-            <AgentActivityTrail steps={agentActivitySteps} />
-            <p className="mb-1 px-1 text-[11px] font-medium text-slate-500">
-              Nexo Assist
-            </p>
+            <div className="mb-1 flex min-w-0 items-center gap-3 py-0.5">
+              <p className="shrink-0 px-1 text-[11px] font-medium text-slate-500">
+                Nexo Assist
+              </p>
+              <AgentActivityTrail
+                steps={agentActivitySteps}
+                className="min-w-0 flex-1"
+              />
+            </div>
             {streamedResponseText ? (
               <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm">
                 <p className="whitespace-pre-wrap text-sm leading-6">

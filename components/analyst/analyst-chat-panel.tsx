@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, useSyncExternalStore, type FormEvent } from "react";
 
 import { AnalystChatEmptyState } from "@/components/analyst/chat/analyst-chat-empty-state";
 import { AnalystChatFooter } from "@/components/analyst/chat/analyst-chat-footer";
@@ -9,9 +9,36 @@ import { AnalystChatMessageList } from "@/components/analyst/chat/analyst-chat-m
 import { AnalystTicketsSheet } from "@/components/analyst/chat/analyst-tickets-sheet";
 import { useConversationMessageSearch } from "@/hooks/use-conversation-message-search";
 import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
-import { formatHandoffSince } from "@/lib/chat/format-handoff-since";
+import { formatHandoffUntil } from "@/lib/chat/format-handoff-until";
 import { getFirstName } from "@/lib/format/person-name";
 import { cn } from "@/lib/utils";
+
+const AI_THOUGHT_PROCESS_STORAGE_KEY = "nexo-analyst-show-ai-reasoning";
+const AI_THOUGHT_PROCESS_EVENT = "nexo-analyst-show-ai-reasoning-change";
+
+function readShowAiThoughtProcessPreference() {
+  if (typeof window === "undefined") return true;
+  const stored = window.localStorage.getItem(AI_THOUGHT_PROCESS_STORAGE_KEY);
+  if (stored === null) return true;
+  return stored === "true";
+}
+
+function subscribeShowAiThoughtProcess(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(AI_THOUGHT_PROCESS_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(AI_THOUGHT_PROCESS_EVENT, onStoreChange);
+  };
+}
+
+function writeShowAiThoughtProcessPreference(value: boolean) {
+  window.localStorage.setItem(
+    AI_THOUGHT_PROCESS_STORAGE_KEY,
+    value ? "true" : "false",
+  );
+  window.dispatchEvent(new Event(AI_THOUGHT_PROCESS_EVENT));
+}
 
 type WorkingAction =
   | "claim"
@@ -54,6 +81,11 @@ export function AnalystChatPanel({
 }) {
   const conversationId = conversation?.id ?? null;
   const messageSearch = useConversationMessageSearch(conversationId);
+  const showAiThoughtProcess = useSyncExternalStore(
+    subscribeShowAiThoughtProcess,
+    readShowAiThoughtProcessPreference,
+    () => true,
+  );
   const [ticketsSheetState, setTicketsSheetState] = useState({
     conversationId,
     open: false,
@@ -74,7 +106,7 @@ export function AnalystChatPanel({
   const firstName = conversation
     ? getFirstName(conversation.name)
     : "Colaborador";
-  const handoffSince = formatHandoffSince(conversation?.handoffAt ?? null);
+  const handoffUntil = formatHandoffUntil(conversation?.handoffAt ?? null);
 
   return (
     <section
@@ -96,12 +128,18 @@ export function AnalystChatPanel({
             isSearchOpen={messageSearch.isSearchOpen}
             messageQuery={messageSearch.messageQuery}
             searchContainerRef={messageSearch.searchContainerRef}
+            currentAnalystId={currentAnalystId}
+            isWorking={isWorking}
+            workingAction={workingAction}
             onBack={onBack}
             onToggleSearch={messageSearch.toggleSearch}
             onSearchQueryChange={messageSearch.setQuery}
             onOpenTickets={() =>
               setTicketsSheetState({ conversationId, open: true })
             }
+            onPerformAction={onPerformAction}
+            showAiThoughtProcess={showAiThoughtProcess}
+            onShowAiThoughtProcessChange={writeShowAiThoughtProcessPreference}
           />
 
           <AnalystChatMessageList
@@ -111,12 +149,13 @@ export function AnalystChatPanel({
             conversationError={conversationError}
             currentAnalystId={currentAnalystId}
             currentAnalystName={currentAnalystName}
+            showAiThoughtProcess={showAiThoughtProcess}
           />
 
           <AnalystChatFooter
             conversation={conversation}
             firstName={firstName}
-            handoffSince={handoffSince}
+            handoffUntil={handoffUntil}
             draft={draft}
             isWorking={isWorking}
             workingAction={workingAction}

@@ -2,14 +2,41 @@
 
 import type { RefObject } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, MoreHorizontal, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  CircleCheckBig,
+  MoreHorizontal,
+  MoreVertical,
+  Search,
+  X,
+} from "lucide-react";
 
 import { ConversationStatusChip } from "@/components/analyst/chat/conversation-status-chip";
 import { UserAvatar } from "@/components/chat/user-avatar";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
 import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
 import { cn } from "@/lib/utils";
+
+type WorkingAction =
+  | "claim"
+  | "return_to_bot"
+  | "close"
+  | "send_message"
+  | null;
 
 export function AnalystChatHeader({
   conversation,
@@ -17,23 +44,41 @@ export function AnalystChatHeader({
   isSearchOpen,
   messageQuery,
   searchContainerRef,
+  currentAnalystId,
+  isWorking,
+  workingAction,
   onBack,
   onToggleSearch,
   onSearchQueryChange,
   onOpenTickets,
+  onPerformAction,
+  showAiThoughtProcess,
+  onShowAiThoughtProcessChange,
 }: {
   conversation: AnalystConversationListItem;
   employeeIsOnline: boolean;
   isSearchOpen: boolean;
   messageQuery: string;
   searchContainerRef: RefObject<HTMLDivElement | null>;
+  currentAnalystId: string;
+  isWorking: boolean;
+  workingAction: WorkingAction;
   onBack: () => void;
   onToggleSearch: () => void;
   onSearchQueryChange: (query: string) => void;
   onOpenTickets: () => void;
+  onPerformAction: (action: "claim" | "return_to_bot" | "close") => void;
+  showAiThoughtProcess: boolean;
+  onShowAiThoughtProcessChange: (value: boolean) => void;
 }) {
   const jobLabel = conversation.job?.trim() || null;
   const ticketCode = conversation.ticketCode;
+  const footerUi = getAnalystFooterUi({
+    status: conversation.status,
+    assignedAnalystId: conversation.assignedAnalystId,
+    currentAnalystId,
+  });
+  const showAssignedToolbar = footerUi.showAssignedToolbar;
 
   return (
     <div
@@ -54,6 +99,7 @@ export function AnalystChatHeader({
           <UserAvatar
             initials={conversation.initials}
             online={employeeIsOnline}
+            pastelFromText={conversation.name}
             className="size-12 text-[14px]"
           />
           <div className="min-w-0">
@@ -76,12 +122,88 @@ export function AnalystChatHeader({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {ticketCode ? (
-            <span className="hidden rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold tracking-wide text-slate-600 sm:inline-flex">
-              {ticketCode}
-            </span>
-          ) : null}
-          <ConversationStatusChip status={conversation.status} />
+          {showAssignedToolbar ? (
+            <>
+              <AlertDialog>
+                <AlertDialog.Trigger>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isWorking}
+                    size="lg"
+                    className="flex items-center gap-2 text-[11px] text-zinc-700"
+                  >
+                    <Bot className="size-3" />
+                    <span className="font-semibold">
+                      {workingAction === "return_to_bot"
+                        ? "Devolvendo..."
+                        : "Devolver ao agent"}
+                    </span>
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content>
+                  <AlertDialog.Header>
+                    <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
+                    <AlertDialog.Description>
+                      O Nexo Assist volta a atender esta conversa e você deixa
+                      de controlar o chat.
+                    </AlertDialog.Description>
+                  </AlertDialog.Header>
+                  <AlertDialog.Footer>
+                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                    <AlertDialog.Action
+                      onClick={() => onPerformAction("return_to_bot")}
+                    >
+                      Confirmar devolução
+                    </AlertDialog.Action>
+                  </AlertDialog.Footer>
+                </AlertDialog.Content>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialog.Trigger>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={isWorking}
+                    className="flex items-center gap-2 text-[11px] text-red-600"
+                  >
+                    <CircleCheckBig className="size-3" />
+                    <span className="font-semibold">
+                      {workingAction === "close"
+                        ? "Encerrando..."
+                        : "Encerrar atendimento"}
+                    </span>
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content>
+                  <AlertDialog.Header>
+                    <AlertDialog.Title>Encerrar atendimento?</AlertDialog.Title>
+                    <AlertDialog.Description>
+                      A conversa será encerrada e o colaborador não poderá
+                      continuar neste atendimento.
+                    </AlertDialog.Description>
+                  </AlertDialog.Header>
+                  <AlertDialog.Footer>
+                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                    <AlertDialog.Action
+                      onClick={() => onPerformAction("close")}
+                    >
+                      Encerrar
+                    </AlertDialog.Action>
+                  </AlertDialog.Footer>
+                </AlertDialog.Content>
+              </AlertDialog>
+            </>
+          ) : (
+            <>
+              {/* {ticketCode ? (
+                <span className="hidden rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold tracking-wide text-slate-600 sm:inline-flex">
+                  {ticketCode}
+                </span>
+              ) : null} */}
+              <ConversationStatusChip status={conversation.status} />
+            </>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -98,6 +220,51 @@ export function AnalystChatHeader({
               <Search className="size-[18px]" />
             )}
           </Button>
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Opções de visualização da conversa"
+                  className="text-slate-500"
+                />
+              }
+            >
+              <MoreVertical className="size-[18px]" />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              className="w-72 gap-3 p-3"
+            >
+              <PopoverHeader>
+                <PopoverTitle className="text-sm text-slate-900">
+                  Raciocínio da IA
+                </PopoverTitle>
+                <PopoverDescription className="text-[12px] leading-4 text-slate-500">
+                  Mostra as ações, a confiança e o motivo do Nexo Assist acima
+                  de cada resposta automática nesta conversa.
+                </PopoverDescription>
+              </PopoverHeader>
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-2.5 py-2">
+                <Label
+                  htmlFor="analyst-show-ai-reasoning"
+                  className="cursor-pointer text-[12px] leading-4 font-medium text-slate-700"
+                >
+                  Exibir raciocínio nas mensagens
+                </Label>
+                <Switch
+                  id="analyst-show-ai-reasoning"
+                  checked={showAiThoughtProcess}
+                  onCheckedChange={(checked) =>
+                    onShowAiThoughtProcessChange(checked === true)
+                  }
+                  size="sm"
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             variant="ghost"
             size="icon"

@@ -15,6 +15,7 @@ export const ticketChoiceItemSchema = z.object({
   priority: z.string().min(1).max(40),
   category: z.string().min(1).max(40),
   /** Opcional: mensagens antigas sem data continuam parseando. */
+  createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
 });
 
@@ -57,6 +58,9 @@ export const ticketStatusMetadataSchema = z.object({
 export const ticketDraftMetadataSchema = z.object({
   kind: z.literal("ticket_draft"),
   draft: ticketDraftPresentationSchema,
+  workflowRunId: z.string().min(1).max(120).optional(),
+  duplicateMatch: z.enum(["none", "active", "reopen"]).optional(),
+  duplicateCode: z.string().min(1).max(30).optional(),
   confirmed: z.boolean().optional(),
   confirmedAt: z.string().optional(),
   cancelled: z.boolean().optional(),

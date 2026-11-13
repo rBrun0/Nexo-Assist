@@ -9,7 +9,7 @@ Construir o app fullstack de Service Desk de TI do desafio Beyond the Bytes. Pri
 - Next.js App Router, TypeScript estrito e Tailwind/Shadcn UI.
 - Autenticação local (senha com hash no Prisma + cookie HTTP-only assinado). Supabase fornece PostgreSQL e, no futuro com JWT customizado, Realtime autenticado.
 - Prisma 7 e PostgreSQL do Supabase; `prisma/schema.prisma` é a fonte de dados do produto.
-- Vercel AI SDK + Google Gemini para o agente/tool calling, salvo decisão explícita posterior.
+- Mastra (`@mastra/core`) executa o agente, as tools e o workflow de abertura. A interface continua no Vercel AI SDK (`useChat`), com o stream convertido por `@mastra/ai-sdk`. O modelo é Google Gemini.
 - Zod para validar entradas no servidor; React Hook Form + resolvers para formulários.
 
 ## Organização por camada
@@ -19,7 +19,8 @@ Construir o app fullstack de Service Desk de TI do desafio Beyond the Bytes. Pri
 - `lib/supabase/`: cliente browser singleton e helpers (ex.: Presence em canal público por sessão). Realtime com conteúdo de chat só após JWT customizado.
 - `lib/validations/`: contratos Zod compartilhados.
 - `lib/services/`: regras de negócio/persistência com Prisma, sem UI.
-- `lib/agent/`: prompts reutilizáveis, tools server-side e execução do modelo.
+- `lib/agent/`: prompts reutilizáveis, trilha pública, confiança e execução do turno.
+- `lib/mastra/`: agente, tools com schema Zod, workflow de abertura e storage dos snapshots suspensos.
 - `lib/prisma.ts`: único Prisma client e pool PostgreSQL.
 - `prisma/`: schema, migrations e seed idempotente. Nunca apagar dados no seed.
 

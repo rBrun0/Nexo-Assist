@@ -26,11 +26,13 @@ export function EmployeePage({
   const isProfilePage = page === "perfil";
   const pagePath = isProfilePage ? (
     <div className="flex items-center gap-2">
-      <span>Service desk de TI</span> <span>&gt;</span> <b>Meu perfil</b>
+      <span>Service desk de TI</span> <span>&gt;</span>{" "}
+      <b className="text-black">Meu perfil</b>
     </div>
   ) : (
     <div className="flex items-center gap-2">
-      <span>Service desk de TI</span> <span>&gt;</span> <b>Atendimento</b>
+      <span>Service desk de TI</span> <span>&gt;</span>{" "}
+      <b className="text-black">Atendimento</b>
     </div>
   );
 
@@ -52,7 +54,7 @@ export function EmployeePage({
       <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
         <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-8">
           <div>
-            <p className="text-sm text-slate-500">{pagePath}</p>
+            <p className="text-sm text-zinc-500">{pagePath}</p>
           </div>
           {!isProfilePage ? (
             <Badge
@@ -83,7 +85,7 @@ export function EmployeePage({
               ) : (
                 <EmployeeMessageList
                   messages={chat.messages}
-                  isSendingMessage={chat.isSendingMessage}
+                  isSendingMessage={chat.isAwaitingAssistant}
                   agentActivitySteps={chat.agentActivitySteps}
                   streamedResponseText={chat.streamedResponseText}
                   lastInteractiveAssistantMessageId={

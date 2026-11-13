@@ -1,15 +1,18 @@
+import { generatePastelColors } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export function UserAvatar({
   initials,
   online,
   size = "md",
+  pastelFromText,
   className,
   "aria-label": ariaLabel,
 }: {
   initials: string;
   online?: boolean;
   size?: "sm" | "md" | "lg";
+  pastelFromText?: string;
   className?: string;
   "aria-label"?: string;
 }) {
@@ -20,15 +23,23 @@ export function UserAvatar({
         ? "size-8 text-[10px]"
         : "size-9 text-[10px]";
 
+  const pastelColors = pastelFromText
+    ? generatePastelColors(pastelFromText)
+    : null;
+
   return (
     <span
       role={ariaLabel ? "img" : undefined}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 font-semibold text-blue-800/90",
+        "relative flex shrink-0 items-center justify-center rounded-full font-semibold",
+        pastelColors
+          ? ""
+          : "bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-800/90",
         sizeClass,
         className,
       )}
+      style={pastelColors ?? undefined}
     >
       <span>{initials}</span>
       {online ? (

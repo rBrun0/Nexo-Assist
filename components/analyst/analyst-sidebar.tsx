@@ -63,7 +63,8 @@ export function AnalystSidebar({
               aria-label={conversationsLabel}
               className="relative size-10 justify-center rounded-xl text-slate-500 data-[active=true]:bg-sidebar-accent data-[active=true]:text-brand-nav-active"
             >
-              <MessageCircle />
+              <MessageCircle className="size-6" />
+
               {conversationsWithUnread > 0 ? (
                 <span className="absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-action px-1 text-[9px] font-semibold text-white">
                   {unreadBadge}

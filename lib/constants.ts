@@ -43,3 +43,13 @@ export const CONFIDENCE_LABELS = {
   medium: "Médio",
   low: "Baixo",
 } as const;
+
+/** Níveis / cargos do Service Desk (campo `User.job` para analistas). */
+export const ANALYST_LEVELS = {
+  N1: "Suporte N1",
+  N2: "Suporte N2",
+  N3: "Suporte N3",
+  COORDINATION: "Coordenação de Service Desk",
+} as const;
+
+export type AnalystLevel = (typeof ANALYST_LEVELS)[keyof typeof ANALYST_LEVELS];

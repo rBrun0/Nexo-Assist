@@ -22,6 +22,7 @@ export function TicketStatusTurn({
     description?: string;
     isOverdue?: boolean;
     slaDeadline?: string | null;
+    createdAt?: string;
   };
   options?: ChatOption[];
   disabled?: boolean;

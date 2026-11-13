@@ -13,6 +13,9 @@ export default async function HomePage() {
   const resolvedWithoutQueuePercent = await getResolvedWithoutQueuePercent();
 
   return (
-    <LoginPage resolvedWithoutQueuePercent={resolvedWithoutQueuePercent} />
+    <LoginPage
+      resolvedWithoutQueuePercent={resolvedWithoutQueuePercent}
+      showDemoAccounts={process.env.NODE_ENV !== "production"}
+    />
   );
 }

@@ -1,13 +1,12 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { Send } from "lucide-react";
+import { Bot, Hand, Headset, Send } from "lucide-react";
 
 import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
 import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 
 type WorkingAction =
@@ -20,7 +19,7 @@ type WorkingAction =
 export function AnalystChatFooter({
   conversation,
   firstName,
-  handoffSince,
+  handoffUntil,
   draft,
   isWorking,
   workingAction,
@@ -31,7 +30,7 @@ export function AnalystChatFooter({
 }: {
   conversation: AnalystConversationListItem;
   firstName: string;
-  handoffSince: string | null;
+  handoffUntil: string | null;
   draft: string;
   isWorking: boolean;
   workingAction: WorkingAction;
@@ -49,33 +48,48 @@ export function AnalystChatFooter({
   return (
     <div className="shrink-0 border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
       {footerUi.showWaitingBanner ? (
-        <div className="mb-3 flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] leading-5 text-amber-900">
-            <span className="font-semibold">{firstName}</span> está à espera de
-            um atendente
-            <span className="text-amber-700"> · agente pausado</span>
-            {handoffSince ? (
-              <span className="text-amber-700"> · desde {handoffSince}</span>
-            ) : null}
-          </p>
+        <div className="mb-3 flex flex-col gap-3 rounded-lg px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-9 rounded-full bg-amber-500/10 flex items-center justify-center">
+              <Hand className="size-4 text-amber-800" />
+            </div>
+            <div className="text-sm font-semibold flex flex-col">
+              <div>{firstName} está à espera de um atendente</div>
+              <div className="text-xs text-zinc-500 font-normal">
+                <span>Agent pausado</span>
+                {handoffUntil ? (
+                  <span>
+                    {" "}
+                    ·{" "}
+                    {handoffUntil === "prazo vencido"
+                      ? handoffUntil
+                      : `até ${handoffUntil}`}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </div>
           <div className="flex shrink-0 items-center gap-2">
             <AlertDialog>
               <AlertDialog.Trigger>
                 <Button
                   type="button"
-                  size="sm"
+                  size={"lg"}
                   variant="outline"
                   disabled={isWorking}
-                  className="h-8 border-amber-300 bg-white text-[11px] text-amber-900 hover:bg-amber-100"
+                  className="h-8 bg-white text-[11px]"
                 >
-                  {workingAction === "return_to_bot"
-                    ? "Devolvendo..."
-                    : "Devolver ao agente"}
+                  <Bot className="size-3" />
+                  <span>
+                    {workingAction === "return_to_bot"
+                      ? "Devolvendo..."
+                      : "Devolver ao agent"}
+                  </span>
                 </Button>
               </AlertDialog.Trigger>
               <AlertDialog.Content>
                 <AlertDialog.Header>
-                  <AlertDialog.Title>Devolver ao agente?</AlertDialog.Title>
+                  <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
                   <AlertDialog.Description>
                     A fila de espera será cancelada e o Nexo Assist retomará o
                     atendimento.
@@ -98,82 +112,13 @@ export function AnalystChatFooter({
               onClick={() => onPerformAction("claim")}
               className="h-8 text-[11px]"
             >
-              {workingAction === "claim"
-                ? "Assumindo..."
-                : "Assumir atendimento"}
+              <Headset className="size-3" />
+              <span>
+                {workingAction === "claim"
+                  ? "Assumindo..."
+                  : "Assumir atendimento"}
+              </span>
             </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {footerUi.showAssignedToolbar ? (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-[11px] text-slate-500">
-            Você está atendendo {firstName}.
-          </p>
-          <div className="flex shrink-0 items-center gap-2">
-            <AlertDialog>
-              <AlertDialog.Trigger>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={isWorking}
-                  className="h-8 text-[11px]"
-                >
-                  {workingAction === "return_to_bot"
-                    ? "Devolvendo..."
-                    : "Devolver ao agente"}
-                </Button>
-              </AlertDialog.Trigger>
-              <AlertDialog.Content>
-                <AlertDialog.Header>
-                  <AlertDialog.Title>Devolver ao agente?</AlertDialog.Title>
-                  <AlertDialog.Description>
-                    O Nexo Assist volta a atender esta conversa e você deixa de
-                    controlar o chat.
-                  </AlertDialog.Description>
-                </AlertDialog.Header>
-                <AlertDialog.Footer>
-                  <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-                  <AlertDialog.Action
-                    onClick={() => onPerformAction("return_to_bot")}
-                  >
-                    Confirmar devolução
-                  </AlertDialog.Action>
-                </AlertDialog.Footer>
-              </AlertDialog.Content>
-            </AlertDialog>
-            <AlertDialog>
-              <AlertDialog.Trigger>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={isWorking}
-                  className="h-8 text-[11px] text-red-600"
-                >
-                  {workingAction === "close"
-                    ? "Encerrando..."
-                    : "Encerrar atendimento"}
-                </Button>
-              </AlertDialog.Trigger>
-              <AlertDialog.Content>
-                <AlertDialog.Header>
-                  <AlertDialog.Title>Encerrar atendimento?</AlertDialog.Title>
-                  <AlertDialog.Description>
-                    A conversa será encerrada e o colaborador não poderá
-                    continuar neste atendimento.
-                  </AlertDialog.Description>
-                </AlertDialog.Header>
-                <AlertDialog.Footer>
-                  <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-                  <AlertDialog.Action onClick={() => onPerformAction("close")}>
-                    Encerrar
-                  </AlertDialog.Action>
-                </AlertDialog.Footer>
-              </AlertDialog.Content>
-            </AlertDialog>
           </div>
         </div>
       ) : null}
@@ -193,7 +138,6 @@ export function AnalystChatFooter({
               event.currentTarget.form?.requestSubmit();
             }
           }}
-          // rows={2}
           placeholder={footerUi.placeholder}
           className="max-h-32 min-h-11 flex-1 resize-y text-xs leading-5"
         />

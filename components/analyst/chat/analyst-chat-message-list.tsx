@@ -15,6 +15,7 @@ export function AnalystChatMessageList({
   conversationError,
   currentAnalystId,
   currentAnalystName,
+  showAiThoughtProcess = true,
 }: {
   conversation: AnalystConversationListItem;
   filteredMessages: AnalystChatMessage[];
@@ -22,18 +23,19 @@ export function AnalystChatMessageList({
   conversationError: string;
   currentAnalystId: string;
   currentAnalystName: string;
+  showAiThoughtProcess?: boolean;
 }) {
   return (
     <div className="chat-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6">
-      <div className="mx-auto mb-6 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] text-slate-500">
-        <ShieldCheck className="size-3.5 text-brand-action" />
-        Conversa vinculada ao atendimento Nexo
-      </div>
-      {conversation.handoffSummary ? (
-        <div className="mx-auto mb-4 w-full max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-          <strong>Resumo do transbordo:</strong> {conversation.handoffSummary}
+      {/* {conversation.handoffSummary ? (
+        <div className="mx-auto mb-4 flex w-full max-w-3xl items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-5 text-amber-950">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-amber-700" />
+          <p>
+            <span className="font-semibold">Resumo do transbordo: </span>
+            {conversation.handoffSummary}
+          </p>
         </div>
-      ) : null}
+      ) : null} */}
       {conversationError ? (
         <p
           role="alert"
@@ -57,6 +59,7 @@ export function AnalystChatMessageList({
             }
             currentAnalystId={currentAnalystId}
             currentAnalystName={currentAnalystName}
+            showAiThoughtProcess={showAiThoughtProcess}
           />
         ))}
       </div>

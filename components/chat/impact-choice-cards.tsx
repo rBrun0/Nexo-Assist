@@ -27,9 +27,9 @@ export function ImpactChoiceCards({
             disabled={disabled}
             onClick={() => onSelect(option)}
             className={cn(
-              "rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-left text-sm font-medium text-slate-800 transition-colors",
+              "rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-medium text-slate-800 transition-colors",
               "hover:border-blue-200 hover:bg-blue-50/60",
-              "disabled:pointer-events-none disabled:opacity-50"
+              "disabled:pointer-events-none disabled:opacity-50",
             )}
           >
             {option.label}

@@ -3,19 +3,21 @@
 import { Search } from "lucide-react";
 
 import { UserAvatar } from "@/components/chat/user-avatar";
+import { getConversationStatusDetail } from "@/lib/analyst/conversation-status";
 import { formatQueuePreview } from "@/lib/analyst/queue-preview";
 import {
-  getConversationStatusLabel,
   getConversationStatusTone,
   getConversationStatusToneClasses,
   type AnalystConversationListItem,
 } from "@/lib/analyst/map-conversation";
+import { formatQueueTime } from "@/lib/chat/format-queue-time";
 import { cn } from "@/lib/utils";
 
 export function ConversationQueue({
   conversations,
   selectedId,
   currentAnalystId,
+  now,
   employeeIsOnline,
   onSelect,
 }: {
@@ -47,6 +49,14 @@ export function ConversationQueue({
         const tone = getConversationStatusToneClasses(
           getConversationStatusTone(conversation.status),
         );
+        const statusDetail = getConversationStatusDetail(
+          conversation,
+          currentAnalystId,
+          now,
+        );
+        const queueTime = conversation.lastMessageAt
+          ? formatQueueTime(conversation.lastMessageAt, now)
+          : conversation.time;
 
         return (
           <button
@@ -62,16 +72,24 @@ export function ConversationQueue({
             <UserAvatar
               initials={conversation.initials}
               online={selectedId === conversation.id && employeeIsOnline}
+              pastelFromText={conversation.name}
               className="size-12 text-[14px]"
-              // size="md"
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
                 <span className="truncate text-[15px] font-semibold text-slate-800">
                   {conversation.name}
                 </span>
-                <span className="shrink-0 text-[10px] text-slate-400">
-                  {conversation.time}
+                <span
+                  className={cn(
+                    "shrink-0 text-[11px] font-medium text-zinc-500",
+                    {
+                      "text-[12px] font-semibold text-brand-action":
+                        conversation.unread,
+                    },
+                  )}
+                >
+                  {queueTime}
                 </span>
               </span>
               <span className="flex items-center justify-between gap-2">
@@ -93,7 +111,7 @@ export function ConversationQueue({
                       tone.text,
                     )}
                   >
-                    {getConversationStatusLabel(conversation.status)}
+                    {statusDetail}
                   </span>
                 </div>
                 {conversation.ticketCode ? (

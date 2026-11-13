@@ -13,8 +13,10 @@ import { useOnlineAnalystsCount } from "@/hooks/use-online-analysts-count";
 
 export function LoginPage({
   resolvedWithoutQueuePercent,
+  showDemoAccounts = false,
 }: {
   resolvedWithoutQueuePercent: number;
+  showDemoAccounts?: boolean;
 }) {
   const {
     register,
@@ -150,6 +152,24 @@ export function LoginPage({
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 Use seu e-mail corporativo e a senha da rede Nexo.
               </p>
+              {showDemoAccounts ? (
+                <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
+                  Ambiente de demonstração: as contas de exemplo aceitam qualquer
+                  senha.{" "}
+                  <span className="font-medium text-slate-700">
+                    carlos.silva@nexo.com.br
+                  </span>
+                  ,{" "}
+                  <span className="font-medium text-slate-700">
+                    ana.souza@nexo.com.br
+                  </span>{" "}
+                  ou{" "}
+                  <span className="font-medium text-slate-700">
+                    analista.ti@nexo.com.br
+                  </span>
+                  .
+                </p>
+              ) : null}
             </div>
 
             <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-5">

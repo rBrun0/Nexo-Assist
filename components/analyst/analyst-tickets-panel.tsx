@@ -18,6 +18,9 @@ import {
   getTicketStatusToneClasses,
 } from "@/lib/i18n/ticket-labels";
 import { cn } from "@/lib/utils";
+import { Separator } from "../ui/separator";
+import { Button } from "../ui/button";
+import { ArrowUpRight } from "lucide-react";
 
 const OTHER_TICKETS_PREVIEW = 2;
 
@@ -33,7 +36,7 @@ function TicketStatusLabel({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-[10px] font-medium",
+        "inline-flex items-center gap-1.5 text-[10px] font-semibold",
         tone.text,
       )}
     >
@@ -48,8 +51,8 @@ function TicketLastEventRow({ statusKey }: { statusKey: string }) {
   const Icon = event.icon;
 
   return (
-    <div className="flex items-center gap-2 text-[11px] text-slate-600">
-      <Icon className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+    <div className="flex items-center gap-2 text-[12px] text-zinc-600">
+      <Icon className="size-3.5 shrink-0 text-zinc-500" aria-hidden />
       <span>{event.label}</span>
     </div>
   );
@@ -67,9 +70,9 @@ function FeaturedTicketCard({
   onStatusChange?: (ticketId: string, status: string) => void;
 }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3.5">
+    <article className="rounded-xl bg-zinc-100/90 p-3.5">
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[10px] font-semibold tracking-wide text-brand-action">
+        <span className="text-[11px] font-semibold tracking-wide text-zinc-600">
           {ticket.code}
         </span>
         <TicketStatusLabel
@@ -77,11 +80,21 @@ function FeaturedTicketCard({
           statusKey={ticket.statusKey}
         />
       </div>
-      <h3 className="mt-2.5 text-[13px] leading-5 font-semibold text-slate-900">
+      <h3 className="mt-2.5 text-[15.5px] leading-5 font-semibold text-slate-900">
         {ticket.title}
       </h3>
-      <p className="mt-1 text-[10px] text-slate-400">{ticket.category}</p>
-      <div className="mt-3 border-t border-slate-100 pt-2.5">
+      <p className="mt-1 text-[12px] text-zinc-500">
+        {ticket.category}
+        <span className="text-zinc-400"> · </span>
+        Prioridade {ticket.priority}
+      </p>
+      {ticket.description ? (
+        <p className="mt-2 line-clamp-4 text-[12.5px] leading-5 text-slate-700">
+          {ticket.description}
+        </p>
+      ) : null}
+      <Separator className="mt-4" />
+      <div className="border-t border-slate-100 pt-2.5">
         <TicketLastEventRow statusKey={ticket.statusKey} />
       </div>
       {canManage && onStatusChange ? (
@@ -131,6 +144,12 @@ function OtherTicketDetails({ ticket }: { ticket: AnalystTicketItem }) {
       <p>
         <span className="text-slate-400">Prioridade:</span> {ticket.priority}
       </p>
+      {ticket.description ? (
+        <p className="leading-5">
+          <span className="text-slate-400">Descrição:</span>{" "}
+          {ticket.description}
+        </p>
+      ) : null}
       {ticket.updatedAt ? (
         <p>
           <span className="text-slate-400">Atualizado:</span> {ticket.updatedAt}
@@ -244,10 +263,11 @@ export function AnalystTicketsPanel({
           id: conversation.conversationTicket.id,
           code: conversation.conversationTicket.code,
           title: conversation.conversationTicket.title,
-          category: "—",
-          priority: "Baixa" as const,
-          status: "Aguardando analista",
-          statusKey: "WAITING_ANALYST",
+          description: conversation.conversationTicket.description,
+          category: conversation.conversationTicket.category,
+          priority: conversation.conversationTicket.priority,
+          status: conversation.conversationTicket.status,
+          statusKey: conversation.conversationTicket.statusKey,
           updatedAt: "",
         } satisfies AnalystTicketItem)
       : null);
@@ -307,16 +327,19 @@ export function AnalystTicketsPanel({
         </section>
       </div>
       {hasMoreOtherTickets ? (
-        <div className="shrink-0 border-t border-slate-200 bg-white px-3 py-3">
-          <button
-            type="button"
+        <div className="shrink-0 bg-white px-3 py-3">
+          <Button
+            variant="outline"
             onClick={() => setShowAllTickets((current) => !current)}
-            className="w-full rounded-lg px-2 py-2 text-center text-[12px] font-medium text-brand-action transition-colors hover:bg-brand-action/5"
+            className="w-full rounded-lg px-2 py-2 text-center text-sm font-medium cursor-pointer"
           >
-            {showAllTickets
-              ? "Mostrar menos chamados"
-              : "Ver todos os chamados..."}
-          </button>
+            <span>
+              {showAllTickets
+                ? "Mostrar menos chamados"
+                : `Ver todos os chamados de ${firstName}`}
+            </span>
+            <ArrowUpRight className="size-4" />
+          </Button>
         </div>
       ) : null}
     </div>

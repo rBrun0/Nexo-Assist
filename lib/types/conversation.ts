@@ -4,6 +4,7 @@ export type TicketSummaryView = {
   id: string;
   code: string;
   title: string;
+  description: string;
   category: string;
   priority: string;
   status: string;
@@ -16,7 +17,12 @@ export type ConversationMessageView = {
   chatSessionId?: string;
   sender: "EMPLOYEE" | "ASSISTANT" | "ANALYST" | "SYSTEM";
   senderUserId: string | null;
-  senderUser: { id: string; name: string; role: "EMPLOYEE" | "ANALYST" } | null;
+  senderUser: {
+    id: string;
+    name: string;
+    role: "EMPLOYEE" | "ANALYST";
+    job: string | null;
+  } | null;
   content: string;
   createdAt: string;
   thoughtProcess: unknown;
@@ -49,7 +55,15 @@ export type AnalystConversationView = {
     tickets: TicketSummaryView[];
   };
   assignedAnalyst: { id: string; name: string } | null;
-  ticket: { id: string; code: string; title: string } | null;
+  ticket: {
+    id: string;
+    code: string;
+    title: string;
+    description?: string | null;
+    category?: string | null;
+    priority?: string | null;
+    status?: string | null;
+  } | null;
   messages: ConversationMessageView[];
   unreadCount: number;
 };

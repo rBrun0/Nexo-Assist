@@ -74,6 +74,20 @@ export function calculateSlaDeadline(
   return new Date(deadline.getTime() + SAO_PAULO_UTC_OFFSET_MS);
 }
 
+/** Dias corridos de atraso. Zero quando o prazo ainda não venceu. */
+export function daysPastDeadline(
+  slaDeadline: Date | string | null | undefined,
+  now = new Date(),
+) {
+  if (!slaDeadline) return 0;
+  const deadline =
+    slaDeadline instanceof Date ? slaDeadline : new Date(slaDeadline);
+  if (Number.isNaN(deadline.getTime())) return 0;
+  const elapsed = now.getTime() - deadline.getTime();
+  if (elapsed <= 0) return 0;
+  return Math.max(1, Math.ceil(elapsed / (24 * 60 * 60 * 1000)));
+}
+
 /** Overdue on-read: usa o flag persistido ou o prazo já vencido. */
 export function isTicketOverdue(
   slaDeadline: Date | string | null | undefined,

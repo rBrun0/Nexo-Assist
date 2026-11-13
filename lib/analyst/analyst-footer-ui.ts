@@ -3,8 +3,8 @@ import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation
 type AnalystStatus = AnalystConversationListItem["status"];
 
 const PLACEHOLDER_BY_STATUS: Partial<Record<AnalystStatus, string>> = {
-  "Com o agente": "Assuma o atendimento para responder.",
-  Aguardando: "Assuma a conversa para responder.",
+  "Com o agente": "Assuma o atendimento para responder",
+  Aguardando: "Assuma a conversa para responder",
   Encerrada: "Conversa encerrada.",
 };
 

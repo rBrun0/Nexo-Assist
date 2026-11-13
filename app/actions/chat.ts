@@ -66,6 +66,7 @@ export async function sendManualChatMessageAction(input: unknown) {
           id: user.id,
           name: user.name,
           role: user.role,
+          job: user.job,
         },
         content: message.content,
         thoughtProcess: message.thoughtProcess,
