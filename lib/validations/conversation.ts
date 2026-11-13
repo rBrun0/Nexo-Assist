@@ -20,10 +20,15 @@ export const requestAnalystSchema = z.object({
   reason: z.string().trim().min(1).max(2000).optional(),
 });
 
+export const endConversationSchema = z.object({
+  action: z.literal("end_conversation"),
+});
+
 export const employeeConversationActionSchema = z.discriminatedUnion("action", [
   confirmTicketSchema,
   cancelTicketSchema,
   requestAnalystSchema,
+  endConversationSchema,
 ]);
 
 export const analystConversationActionSchema = z.discriminatedUnion("action", [

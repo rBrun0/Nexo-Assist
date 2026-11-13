@@ -13,6 +13,7 @@ import {
   createEmployeeMessage,
   cancelTicketDraft,
   createTicketFromDraft,
+  endEmployeeConversation,
   getEmployeeConversation,
   requestAnalystHandoff,
 } from "@/lib/services/conversations";
@@ -66,6 +67,11 @@ export async function POST(request: Request) {
               "Funcionário solicitou atendimento humano pelo limite da conversa.",
           ),
         });
+      }
+
+      if (action.data.action === "end_conversation") {
+        await endEmployeeConversation(user.id);
+        return NextResponse.json({ conversation: null });
       }
 
       if (action.data.action === "cancel_ticket") {

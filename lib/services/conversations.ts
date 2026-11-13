@@ -611,6 +611,46 @@ export async function saveAssistantMessage(
   });
 }
 
+export async function endEmployeeConversation(userId: string) {
+  const session = await findActiveEmployeeConversation(userId);
+  if (!session) {
+    throw new ConversationError("Não há conversa ativa para encerrar.", 404);
+  }
+
+  if (session.status === ChatStatus.HUMAN_ACTIVE) {
+    throw new ConversationError(
+      "O analista precisa encerrar este atendimento.",
+      403,
+    );
+  }
+
+  if (session.status !== ChatStatus.BOT_ACTIVE) {
+    throw new ConversationError(
+      "Só é possível encerrar enquanto o assistente está atendendo.",
+      409,
+    );
+  }
+
+  const now = new Date();
+  const closed = await prisma.chatSession.updateMany({
+    where: {
+      id: session.id,
+      userId,
+      status: ChatStatus.BOT_ACTIVE,
+    },
+    data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
+  });
+  if (closed.count !== 1) {
+    throw new ConversationError(
+      "A conversa foi atualizada. Atualize os dados antes de tentar novamente.",
+      409,
+    );
+  }
+
+  await createSystemMessage(session.id, "Conversa encerrada", prisma, now);
+  return { status: ChatStatus.CLOSED };
+}
+
 export async function requestAnalystHandoff(
   userId: string,
   reason = "Funcionário solicitou atendimento humano.",

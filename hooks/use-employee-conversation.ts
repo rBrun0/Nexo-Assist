@@ -26,6 +26,7 @@ import type { ServiceDeskUIMessage } from "@/lib/agent/run-service-desk-agent";
 import {
   cancelTicketDraft,
   confirmTicketDraft as confirmTicketDraftRequest,
+  endConversation,
   getMyConversation,
   requestAnalyst,
 } from "@/lib/api/conversations";
@@ -74,6 +75,8 @@ export function useEmployeeConversation({
   >([]);
   const [isSendingManualMessage, setIsSendingManualMessage] = useState(false);
   const [isRequestingAnalyst, setIsRequestingAnalyst] = useState(false);
+  const [isEndingConversation, setIsEndingConversation] = useState(false);
+  const [endedNotice, setEndedNotice] = useState(false);
   const [pendingLocalMessage, setPendingLocalMessage] =
     useState<ChatHistoryMessage | null>(null);
 
@@ -364,6 +367,7 @@ export function useEmployeeConversation({
     if (!trimmedMessage || isSendingMessage || isAtMessageLimit) return;
 
     setConversationError("");
+    setEndedNotice(false);
     const humanHandoff = isHumanHandoffStatus(conversation?.status);
     if (!humanHandoff) {
       setAgentActivitySteps([
@@ -558,6 +562,10 @@ export function useEmployeeConversation({
   }, [messages]);
 
   function handleOptionSelect(option: ChatOption) {
+    if (option.action === "end_conversation") {
+      void endConversationAction();
+      return;
+    }
     const trimmed = option.message.trim();
     if (trimmed.endsWith(":")) {
       setMessage(trimmed + " ");
@@ -581,6 +589,30 @@ export function useEmployeeConversation({
 
   function handleArticleSelect(article: { title: string; category?: string }) {
     void submitMessage(`Me explique: ${article.title}`);
+  }
+
+  async function endConversationAction() {
+    if (isEndingConversation || conversation?.status !== "BOT_ACTIVE") return;
+    setIsEndingConversation(true);
+    setConversationError("");
+    try {
+      await endConversation();
+      setEndedNotice(true);
+      setStreamedMessages([]);
+      streamStartedAtRef.current = null;
+      setPendingLocalMessage(null);
+      optimisticMessageIdRef.current = null;
+      await loadConversation();
+    } catch (error) {
+      console.error("Falha ao encerrar a conversa:", error);
+      setConversationError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível encerrar a conversa.",
+      );
+    } finally {
+      setIsEndingConversation(false);
+    }
   }
 
   async function requestAnalystFromLimit() {
@@ -625,6 +657,8 @@ export function useEmployeeConversation({
       (!isSendingManualMessage &&
         (chatStatus === "submitted" || chatStatus === "streaming")),
     isRequestingAnalyst,
+    isEndingConversation,
+    endedNotice,
     streamedResponseText,
     statusBadge,
     onlineUsers: presence.onlineUsers,
@@ -639,5 +673,6 @@ export function useEmployeeConversation({
     handleTicketSelect,
     handleArticleSelect,
     requestAnalystFromLimit,
+    endConversationAction,
   };
 }

@@ -46,7 +46,7 @@ export function EmployeeMessageList({
   onCancelDraft: (draftMessageId: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-5 px-1 py-5 sm:px-2 sm:py-6">
+    <div className="flex flex-col gap-5 px-2 sm:px-6 md:px-36 py-5 sm:py-6">
       {messages.map((chatMessage, index) => {
         const isSystemMessage = chatMessage.sender === "SYSTEM";
         const isEmployeeMessage = chatMessage.sender === "EMPLOYEE";
@@ -73,9 +73,7 @@ export function EmployeeMessageList({
               isAssistantMessage ? chatMessage.thoughtProcess : undefined
             }
             messageId={isAssistantMessage ? chatMessage.id : undefined}
-            thoughtHeaderLayout={
-              isAssistantMessage ? "label-start" : "stacked"
-            }
+            thoughtHeaderLayout={isAssistantMessage ? "label-start" : "stacked"}
             alignEnd={isEmployeeMessage}
           >
             {isAssistantMessage ? (
@@ -118,8 +116,8 @@ export function EmployeeMessageList({
           transition={{ duration: 0.18, ease: "easeOut" }}
         >
           <div className="min-w-0 w-full max-w-[min(92%,720px)]">
-            <div className="mb-1 flex min-w-0 items-center gap-3 py-0.5">
-              <p className="shrink-0 px-1 text-[11px] font-medium text-slate-500">
+            <div className="-mb-0.5 flex min-w-0 items-center gap-3 leading-5">
+              <p className="shrink-0 px-1 text-[11px] leading-5 font-medium text-slate-500">
                 Nexo Assist
               </p>
               <AgentActivityTrail

@@ -11,6 +11,7 @@ import {
   getChatHistoryForUser,
   getEmployeeConversation,
   getOrCreateEmployeeConversation,
+  endEmployeeConversation,
   performAnalystConversationAction,
   saveAssistantMessage,
   sendManualConversationMessage,
@@ -244,6 +245,89 @@ describe("getOrCreateEmployeeConversation", () => {
     );
     expect(prisma.chatSession.create).toHaveBeenCalledWith({
       data: { userId: employeeId },
+    });
+  });
+
+  it("cria outra conversa depois que a anterior foi encerrada", async () => {
+    resolveMock(prisma.chatSession.findFirst, null);
+    const created = { id: "session-2", status: ChatStatus.BOT_ACTIVE };
+    resolveMock(prisma.chatSession.create, created);
+
+    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(
+      created,
+    );
+    expect(prisma.chatSession.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: employeeId,
+          status: {
+            in: [
+              ChatStatus.BOT_ACTIVE,
+              ChatStatus.WAITING_HUMAN,
+              ChatStatus.HUMAN_ACTIVE,
+            ],
+          },
+        },
+      }),
+    );
+  });
+});
+
+describe("endEmployeeConversation", () => {
+  it("encerra a conversa BOT_ACTIVE do funcionário", async () => {
+    resolveMock(prisma.chatSession.findFirst, {
+      id: sessionId,
+      userId: employeeId,
+      status: ChatStatus.BOT_ACTIVE,
+    });
+    resolveMock(prisma.chatSession.updateMany, { count: 1 });
+    resolveMock(prisma.chatMessage.create, { id: "system-close" });
+
+    await expect(endEmployeeConversation(employeeId)).resolves.toEqual({
+      status: ChatStatus.CLOSED,
+    });
+    expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: sessionId,
+          userId: employeeId,
+          status: ChatStatus.BOT_ACTIVE,
+        },
+        data: expect.objectContaining({ status: ChatStatus.CLOSED }),
+      }),
+    );
+    expect(prisma.chatMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          sender: MessageSender.SYSTEM,
+          content: "Conversa encerrada",
+        }),
+      }),
+    );
+  });
+
+  it("recusa encerrar quando um analista já assumiu", async () => {
+    resolveMock(prisma.chatSession.findFirst, {
+      id: sessionId,
+      userId: employeeId,
+      status: ChatStatus.HUMAN_ACTIVE,
+    });
+
+    await expect(endEmployeeConversation(employeeId)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+    expect(prisma.chatSession.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("recusa encerrar em WAITING_HUMAN", async () => {
+    resolveMock(prisma.chatSession.findFirst, {
+      id: sessionId,
+      userId: employeeId,
+      status: ChatStatus.WAITING_HUMAN,
+    });
+
+    await expect(endEmployeeConversation(employeeId)).rejects.toMatchObject({
+      statusCode: 409,
     });
   });
 });

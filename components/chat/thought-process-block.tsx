@@ -90,7 +90,7 @@ export function ThoughtProcessBlock({
   return (
     <div
       className={cn(
-        "mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5",
+        "mb-0 flex min-w-0 flex-wrap items-center gap-1.5",
         className,
       )}
     >
@@ -103,7 +103,7 @@ export function ThoughtProcessBlock({
                 variant="ghost"
                 size="icon-xs"
                 aria-label="Ver decisão do agente"
-                className="size-6 shrink-0 cursor-pointer text-slate-500 hover:text-slate-700"
+                className="size-5 shrink-0 cursor-pointer text-slate-500 hover:text-slate-700"
               />
             }
           >

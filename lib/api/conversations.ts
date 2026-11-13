@@ -53,3 +53,12 @@ export async function requestAnalyst(reason: string) {
     "Não foi possível solicitar um analista.",
   );
 }
+
+export async function endConversation() {
+  const result = await postJson<ConversationResponse>(
+    "/api/conversations/me",
+    { action: "end_conversation" },
+    { fallbackError: "Não foi possível encerrar a conversa." },
+  );
+  return result.conversation ?? null;
+}

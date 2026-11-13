@@ -1,6 +1,7 @@
 import {
   ANALYST_OPTION,
   DEFAULT_CHAT_OPTIONS,
+  END_CONVERSATION_OPTION,
   buildAssistantMetadata,
   inferTicketChoiceIntent,
   shouldOfferAnalystChip,
@@ -221,6 +222,7 @@ describe("buildAssistantMetadata", () => {
     if (normal && "options" in normal) {
       expect(normal.options ?? []).not.toContainEqual(ANALYST_OPTION);
       expect(normal.options ?? []).toContainEqual(decline);
+      expect(normal.options ?? []).toContainEqual(END_CONVERSATION_OPTION);
     }
 
     const overdue = parseAssistantMessageMetadata(
@@ -278,7 +280,7 @@ describe("buildAssistantMetadata", () => {
     );
 
     expect(metadata).toMatchObject({
-      options: DEFAULT_CHAT_OPTIONS,
+      options: [...DEFAULT_CHAT_OPTIONS, END_CONVERSATION_OPTION],
     });
   });
 
@@ -313,7 +315,10 @@ describe("buildAssistantMetadata", () => {
     );
     expect(status?.kind).toBe("system_status");
     if (status && "options" in status) {
-      expect(status.options).toEqual(DEFAULT_CHAT_OPTIONS);
+      expect(status.options).toEqual([
+        ...DEFAULT_CHAT_OPTIONS,
+        END_CONVERSATION_OPTION,
+      ]);
     }
 
     const articles = parseAssistantMessageMetadata(
@@ -335,7 +340,7 @@ describe("buildAssistantMetadata", () => {
       buildAssistantMetadata({ actions: [] }),
     );
     expect(metadata).toMatchObject({
-      options: DEFAULT_CHAT_OPTIONS,
+      options: [...DEFAULT_CHAT_OPTIONS, END_CONVERSATION_OPTION],
     });
   });
 });

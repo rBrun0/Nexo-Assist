@@ -40,6 +40,14 @@ describe("employeeMessageSchema", () => {
 });
 
 describe("employeeConversationActionSchema", () => {
+  it("aceita encerrar a conversa pelo funcionário", () => {
+    expect(
+      employeeConversationActionSchema.safeParse({
+        action: "end_conversation",
+      }).success,
+    ).toBe(true);
+  });
+
   it("aceita solicitação de analista", () => {
     expect(
       employeeConversationActionSchema.safeParse({

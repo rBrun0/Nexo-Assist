@@ -16,11 +16,13 @@ export function EmployeeComposer({
   isLoadingConversation,
   isAtMessageLimit,
   isRequestingAnalyst,
+  isEndingConversation = false,
   messageCount,
   messageLimit,
   onMessageChange,
   onSubmit,
   onRequestAnalyst,
+  onEndConversation,
 }: {
   message: string;
   conversationError: string;
@@ -29,11 +31,13 @@ export function EmployeeComposer({
   isLoadingConversation: boolean;
   isAtMessageLimit: boolean;
   isRequestingAnalyst: boolean;
+  isEndingConversation?: boolean;
   messageCount: number;
   messageLimit: number;
   onMessageChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRequestAnalyst: () => void;
+  onEndConversation?: () => void;
 }) {
   const statusUi = getEmployeeStatusUi(conversationStatus);
   const composerLocked =
@@ -41,14 +45,15 @@ export function EmployeeComposer({
     isLoadingConversation ||
     isAtMessageLimit ||
     conversationStatus === "CLOSED" ||
-    isRequestingAnalyst;
+    isRequestingAnalyst ||
+    isEndingConversation;
 
   const needsAnalystCta =
     isAtMessageLimit && conversationStatus === "BOT_ACTIVE";
 
   const limitBanner =
     isAtMessageLimit && conversationStatus === "BOT_ACTIVE"
-      ? "Esta conversa atingiu o limite de 30 mensagens. Solicite um analista para continuar."
+      ? "Esta conversa atingiu o limite de 30 mensagens. Solicite um analista ou encerre para começar outra."
       : isAtMessageLimit
         ? "Esta conversa atingiu o limite de 30 mensagens. O analista pode encerrar para você abrir outra."
         : null;
@@ -58,7 +63,7 @@ export function EmployeeComposer({
     : statusUi.placeholder;
 
   return (
-    <div className="shrink-0 bg-transparent pt-2 pb-5">
+    <div className="shrink-0 bg-transparent px-2 pt-2 pb-5 md:px-44 sm:px-12">
       {limitBanner ? (
         <div
           role="status"
@@ -66,18 +71,42 @@ export function EmployeeComposer({
         >
           <p className="leading-5">{limitBanner}</p>
           {needsAnalystCta ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={isRequestingAnalyst || isLoadingConversation}
-              onClick={onRequestAnalyst}
-              className="mt-3 h-8 gap-1.5 rounded-lg bg-brand-action text-white hover:bg-brand-action-hover"
-            >
-              <Headphones className="size-3.5" />
-              {isRequestingAnalyst
-                ? "Solicitando analista..."
-                : "Falar com um analista"}
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={
+                  isRequestingAnalyst ||
+                  isLoadingConversation ||
+                  isEndingConversation
+                }
+                onClick={onRequestAnalyst}
+                className="h-8 gap-1.5 rounded-lg bg-brand-action text-white hover:bg-brand-action-hover"
+              >
+                <Headphones className="size-3.5" />
+                {isRequestingAnalyst
+                  ? "Solicitando analista..."
+                  : "Falar com um analista"}
+              </Button>
+              {onEndConversation ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={
+                    isEndingConversation ||
+                    isLoadingConversation ||
+                    isRequestingAnalyst
+                  }
+                  onClick={onEndConversation}
+                  className="h-8 rounded-lg"
+                >
+                  {isEndingConversation
+                    ? "Encerrando..."
+                    : "Encerrar e começar outra"}
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -2,10 +2,17 @@ import { z } from "zod";
 
 import { ticketDraftPresentationSchema } from "@/lib/validations/ticket";
 
-export const chatOptionSchema = z.object({
-  label: z.string().trim().min(1).max(80),
-  message: z.string().trim().min(1).max(500),
-});
+export const chatOptionSchema = z
+  .object({
+    label: z.string().trim().min(1).max(80),
+    message: z.string().trim().max(500).default(""),
+    action: z.enum(["end_conversation"]).optional(),
+  })
+  .refine(
+    (option) =>
+      option.action === "end_conversation" || option.message.trim().length >= 1,
+    { message: "Informe a mensagem do chip ou uma ação." },
+  );
 
 export const ticketChoiceItemSchema = z.object({
   id: z.string().uuid(),

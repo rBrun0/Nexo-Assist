@@ -64,7 +64,7 @@ export function ChatMessageFrame({
             {inlineHeader ? (
               <div
                 className={cn(
-                  "relative mb-1 min-h-6 py-0.5",
+                  "relative -mb-0.5 min-h-5",
                   senderLabel && "pr-[7.5rem]",
                 )}
               >
@@ -78,7 +78,7 @@ export function ChatMessageFrame({
                 {senderLabel ? (
                   <p
                     className={cn(
-                      "absolute top-0.5 right-0 z-[1] px-1 text-[11px] font-medium",
+                      "absolute top-0 right-0 z-[1] px-1 text-[11px] leading-5 font-medium",
                       senderLabelClassName,
                     )}
                   >
@@ -87,11 +87,11 @@ export function ChatMessageFrame({
                 ) : null}
               </div>
             ) : labelStartHeader ? (
-              <div className="mb-1 flex min-w-0 items-center gap-3 py-0.5">
+              <div className="-mb-0.5 flex min-w-0 items-center gap-3 leading-5">
                 {senderLabel ? (
                   <p
                     className={cn(
-                      "shrink-0 px-1 text-[11px] font-medium",
+                      "shrink-0 px-1 text-[11px] leading-5 font-medium",
                       senderLabelClassName,
                     )}
                   >
@@ -112,18 +112,19 @@ export function ChatMessageFrame({
                   <ThoughtProcessBlock
                     thoughtProcess={thoughtProcess}
                     messageId={messageId}
+                    className="-mb-0.5"
                   />
                 ) : null}
                 {senderLabel ? (
                   <div
                     className={cn(
-                      "flex items-center gap-1 py-0.5",
+                      "-mb-0.5 flex items-center gap-1",
                       alignEnd && "justify-end",
                     )}
                   >
                     <p
                       className={cn(
-                        "px-1 text-[11px] font-medium",
+                        "px-1 text-[11px] leading-5 font-medium",
                         senderLabelClassName,
                       )}
                     >

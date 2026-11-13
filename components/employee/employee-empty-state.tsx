@@ -22,9 +22,11 @@ const suggestions = [
 
 export function EmployeeEmptyState({
   firstName,
+  endedNotice = false,
   onSuggestionSelect,
 }: {
   firstName: string;
+  endedNotice?: boolean;
   onSuggestionSelect: (title: string) => void;
 }) {
   return (
@@ -36,8 +38,9 @@ export function EmployeeEmptyState({
         Como podemos facilitar seu dia?
       </h1>
       <p className="mt-3 max-w-lg text-sm leading-6 text-slate-500">
-        Tire dúvidas, resolva problemas de TI ou acompanhe seus chamados. É só
-        começar por aqui.
+        {endedNotice
+          ? "Atendimento encerrado. Envie uma mensagem para começar outro."
+          : "Tire dúvidas, resolva problemas de TI ou acompanhe seus chamados. É só começar por aqui."}
       </p>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-3">

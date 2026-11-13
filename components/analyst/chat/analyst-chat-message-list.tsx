@@ -26,7 +26,7 @@ export function AnalystChatMessageList({
   showAiThoughtProcess?: boolean;
 }) {
   return (
-    <div className="chat-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-6">
+    <div className="chat-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5 sm:px-12">
       {/* {conversation.handoffSummary ? (
         <div className="mx-auto mb-4 flex w-full max-w-3xl items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-5 text-amber-950">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-amber-700" />

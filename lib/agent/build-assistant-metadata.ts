@@ -25,6 +25,19 @@ export const ANALYST_OPTION: ChatOption = {
   message: "Quero falar com um analista.",
 };
 
+export const END_CONVERSATION_OPTION: ChatOption = {
+  label: "Isso resolveu meu problema",
+  message: "",
+  action: "end_conversation",
+};
+
+function withResolutionChip(options: ChatOption[]): ChatOption[] {
+  if (options.some((option) => option.action === "end_conversation")) {
+    return options;
+  }
+  return [...options, END_CONVERSATION_OPTION];
+}
+
 function toIsoOptional(value?: string | Date) {
   if (!value) return undefined;
   return value instanceof Date ? value.toISOString() : value;
@@ -109,7 +122,7 @@ function ticketActionOptions(
     options.push(ANALYST_OPTION);
   }
   options.push(DECLINE_OPTION);
-  return options;
+  return withResolutionChip(options);
 }
 
 function toTicketStatusMetadata(
@@ -199,7 +212,7 @@ export function buildAssistantMetadata({
 
     if (tickets.length === 0) {
       const metadata = assistantMessageMetadataSchema.parse({
-        options: DEFAULT_CHAT_OPTIONS,
+        options: withResolutionChip(DEFAULT_CHAT_OPTIONS),
       });
       return metadata as Prisma.InputJsonObject;
     }
@@ -248,7 +261,7 @@ export function buildAssistantMetadata({
         statusAction.systemStatusMessage ??
         "Não há integração de monitoramento configurada.",
       services: statusAction.services,
-      options: DEFAULT_CHAT_OPTIONS,
+      options: withResolutionChip(DEFAULT_CHAT_OPTIONS),
     });
     return metadata as Prisma.InputJsonObject;
   }
@@ -263,13 +276,13 @@ export function buildAssistantMetadata({
     const metadata = assistantMessageMetadataSchema.parse({
       kind: "article_refs",
       articles: kbAction.articles,
-      options: DEFAULT_CHAT_OPTIONS,
+      options: withResolutionChip(DEFAULT_CHAT_OPTIONS),
     });
     return metadata as Prisma.InputJsonObject;
   }
 
   const metadata = assistantMessageMetadataSchema.parse({
-    options: DEFAULT_CHAT_OPTIONS,
+    options: withResolutionChip(DEFAULT_CHAT_OPTIONS),
   });
   return metadata as Prisma.InputJsonObject;
 }

@@ -52,7 +52,7 @@ export function EmployeePage({
       />
 
       <SidebarInset className="h-svh min-h-0 min-w-0 overflow-hidden">
-        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-8">
+        <header className="flex h-[72px] shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-5 sm:px-12">
           <div>
             <p className="text-sm text-zinc-500">{pagePath}</p>
           </div>
@@ -71,8 +71,8 @@ export function EmployeePage({
         </header>
 
         {!isProfilePage ? (
-          <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white px-5 sm:px-8">
-            <div className="chat-scroll min-h-0 flex-1 overflow-y-auto pt-2 pb-6">
+          <main className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-white">
+            <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6 sm:px-8">
               {chat.isLoadingConversation ? (
                 <div className="flex h-full items-center justify-center text-sm text-slate-500">
                   Carregando sua conversa...
@@ -80,12 +80,15 @@ export function EmployeePage({
               ) : chat.messages.length === 0 && !chat.isSendingMessage ? (
                 <EmployeeEmptyState
                   firstName={getFirstName(employee.name)}
+                  endedNotice={chat.endedNotice}
                   onSuggestionSelect={(title) => void chat.submitMessage(title)}
                 />
               ) : (
                 <EmployeeMessageList
                   messages={chat.messages}
-                  isSendingMessage={chat.isAwaitingAssistant}
+                  isSendingMessage={
+                    chat.isAwaitingAssistant || chat.isEndingConversation
+                  }
                   agentActivitySteps={chat.agentActivitySteps}
                   streamedResponseText={chat.streamedResponseText}
                   lastInteractiveAssistantMessageId={
@@ -116,9 +119,11 @@ export function EmployeePage({
               isLoadingConversation={chat.isLoadingConversation}
               isAtMessageLimit={chat.isAtMessageLimit}
               isRequestingAnalyst={chat.isRequestingAnalyst}
+              isEndingConversation={chat.isEndingConversation}
               onMessageChange={chat.setMessage}
               onSubmit={(event) => void chat.handleSubmit(event)}
               onRequestAnalyst={() => void chat.requestAnalystFromLimit()}
+              onEndConversation={() => void chat.endConversationAction()}
             />
           </main>
         ) : (
