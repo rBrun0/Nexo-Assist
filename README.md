@@ -67,8 +67,8 @@ O system prompt reutilizável está em `lib/agent/prompts/service-desk.ts` e seg
 
 O metadata da mensagem do assistente é montado no servidor (`lib/agent/build-assistant-metadata.ts`) a partir das tools — não a partir de JSON inventado pelo modelo. A UI em `components/chat/` renderiza:
 
-- `ticket_choice`: lista selecionável quando há vários chamados (ex.: “qual o status?”); o clique define o chamado de contexto e envia uma mensagem automática.
-- `ticket_status`: card de detalhe quando há um único chamado relevante.
+- `ticket_choice`: lista com radio e botão Continuar quando o funcionário consulta os chamados (um ou vários); a confirmação define o chamado de contexto e envia uma mensagem automática.
+- `ticket_status`: card de detalhe depois que um chamado foi escolhido ou citado pelo código.
 - `ticket_draft`: rascunho com confirmação explícita antes de gravar.
 - `system_status`: serviços consultados sem inventar disponibilidade.
 - `article_refs`: atalhos para artigos da Central de Ajuda.

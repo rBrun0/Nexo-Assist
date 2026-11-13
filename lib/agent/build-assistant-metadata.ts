@@ -68,6 +68,20 @@ function toChoiceItem(ticket: {
   };
 }
 
+function findTicketMentionedInMessage<T extends { code: string }>(
+  tickets: T[],
+  lastUserMessage?: string | null,
+): T | undefined {
+  const text = lastUserMessage?.trim();
+  if (!text) return undefined;
+
+  const haystack = text.toLocaleUpperCase("pt-BR");
+  const matches = tickets.filter((ticket) =>
+    haystack.includes(ticket.code.toLocaleUpperCase("pt-BR")),
+  );
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
 export function inferTicketChoiceIntent(
   lastUserMessage?: string | null,
 ): TicketChoiceIntent {
@@ -232,11 +246,15 @@ export function buildAssistantMetadata({
       ) as Prisma.InputJsonObject;
     }
 
-    if (tickets.length === 1) {
+    const mentionedSource = findTicketMentionedInMessage(
+      listAction.tickets,
+      lastUserMessage,
+    );
+    if (mentionedSource) {
       return toTicketStatusMetadata(
-        listAction.tickets[0],
-        tickets[0],
-        includeAnalyst,
+        mentionedSource,
+        toChoiceItem(mentionedSource),
+        shouldOfferAnalystChip([mentionedSource]),
       ) as Prisma.InputJsonObject;
     }
 

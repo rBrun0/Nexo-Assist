@@ -2,6 +2,8 @@
 
 import { BookOpen } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 export function ArticleRefsList({
   articles,
   disabled = false,
@@ -16,12 +18,13 @@ export function ArticleRefsList({
   return (
     <div className="space-y-2">
       {articles.map((article, index) => (
-        <button
+        <Button
           key={`${article.title}-${index}`}
           type="button"
+          variant="outline"
           disabled={disabled}
           onClick={() => onSelect(article)}
-          className="flex w-full items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/50 disabled:opacity-50"
+          className="h-auto w-full items-start justify-start gap-2 rounded-xl px-3 py-2 text-left whitespace-normal"
         >
           <BookOpen className="mt-0.5 size-3.5 shrink-0 text-brand-action" />
           <span className="min-w-0">
@@ -29,12 +32,12 @@ export function ArticleRefsList({
               {article.title}
             </span>
             {article.category ? (
-              <span className="mt-0.5 block text-[11px] text-slate-500">
+              <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
                 {article.category}
               </span>
             ) : null}
           </span>
-        </button>
+        </Button>
       ))}
     </div>
   );

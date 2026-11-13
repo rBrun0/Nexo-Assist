@@ -26,7 +26,9 @@ export function TicketChoiceList({
   disabled?: boolean;
   onSelect: (ticket: TicketChoiceItem, intent: TicketChoiceIntent) => void;
 }) {
-  const [selectedTicketId, setSelectedTicketId] = useState<string>("");
+  const [selectedTicketId, setSelectedTicketId] = useState<string>(() =>
+    tickets.length === 1 ? tickets[0].id : "",
+  );
 
   if (tickets.length === 0) return null;
 
@@ -106,18 +108,21 @@ export function TicketChoiceList({
           );
         })}
       </div>
-      {/* <Button
-        type="button"
-        size="sm"
-        disabled={disabled || !selected}
-        onClick={() => {
-          if (!selected) return;
-          onSelect(selected, intent);
-        }}
-        className="h-8"
-      >
-        Continuar
-      </Button> */}
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled || !selected}
+          onClick={() => {
+            if (!selected) return;
+            onSelect(selected, intent);
+          }}
+          className="h-8 rounded-md px-3 text-[11px] font-semibold"
+        >
+          Continuar
+        </Button>
+      </div>
     </div>
   );
 }

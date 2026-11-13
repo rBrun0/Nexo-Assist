@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import { formatMessageTime } from "@/lib/chat/format-message-time";
+import { formatAssistantRichText } from "@/lib/chat/format-assistant-rich-text";
 
 export function AssistantTextBubble({
   content,
@@ -17,9 +18,7 @@ export function AssistantTextBubble({
 
   return (
     <div className="relative rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
-      {content.trim() ? (
-        <p className="whitespace-pre-wrap text-[14.5px] leading-6">{content}</p> // TODO -> Definir esse tamanho de letra pra fonte padrão do chat
-      ) : null}
+      {content.trim() ? formatAssistantRichText(content) : null}
       {footer}
       <p className="absolute mt-1 text-right text-[10px] text-slate-400 right-3 bottom-0">
         {formatMessageTime(createdAt)}

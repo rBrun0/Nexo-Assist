@@ -54,6 +54,10 @@ export const listedTicketSchema = z.object({
   status: z.string(),
   priority: z.string(),
   category: z.string(),
+  /** Rótulos em PT-BR para o modelo usar na fala ao usuário. */
+  statusLabel: z.string(),
+  priorityLabel: z.string(),
+  categoryLabel: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   isOverdue: z.boolean(),

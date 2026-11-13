@@ -1,7 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import type { ChatOption } from "@/lib/validations/chat-metadata";
-import { cn } from "@/lib/utils";
 
 export function ImpactChoiceCards({
   question = "Quem está sendo afetado?",
@@ -21,19 +21,16 @@ export function ImpactChoiceCards({
       <p className="text-sm font-semibold text-slate-800">{question}</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {options.map((option, index) => (
-          <button
+          <Button
             key={`${option.label}-${index}`}
             type="button"
+            variant="outline"
             disabled={disabled}
             onClick={() => onSelect(option)}
-            className={cn(
-              "rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-medium text-slate-800 transition-colors",
-              "hover:border-blue-200 hover:bg-blue-50/60",
-              "disabled:pointer-events-none disabled:opacity-50",
-            )}
+            className="h-auto justify-start rounded-xl px-3 py-3 text-left text-sm font-medium whitespace-normal"
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </div>
     </div>

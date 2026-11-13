@@ -1,6 +1,69 @@
 "use client";
 
+import { AlertDialog } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import type { ChatOption } from "@/lib/validations/chat-metadata";
+
+const chipClassName = "h-auto rounded-md px-3 py-1.5 text-[11px] font-semibold";
+
+function OptionChip({
+  option,
+  disabled,
+  onSelect,
+}: {
+  option: ChatOption;
+  disabled: boolean;
+  onSelect: (option: ChatOption) => void;
+}) {
+  if (option.action === "end_conversation") {
+    return (
+      <AlertDialog>
+        <AlertDialog.Trigger disabled={disabled}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            className={chipClassName}
+          >
+            {option.label}
+          </Button>
+        </AlertDialog.Trigger>
+        <AlertDialog.Content>
+          <AlertDialog.Header>
+            <AlertDialog.Title>Encerrar conversa?</AlertDialog.Title>
+            <AlertDialog.Description>
+              Esta conversa será encerrada. Você poderá abrir outra depois se
+              precisar de ajuda.
+            </AlertDialog.Description>
+          </AlertDialog.Header>
+          <AlertDialog.Footer>
+            <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+            <AlertDialog.Action
+              variant="destructive"
+              onClick={() => onSelect(option)}
+            >
+              Encerrar
+            </AlertDialog.Action>
+          </AlertDialog.Footer>
+        </AlertDialog.Content>
+      </AlertDialog>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={disabled}
+      onClick={() => onSelect(option)}
+      className={chipClassName}
+    >
+      {option.label}
+    </Button>
+  );
+}
 
 export function ChatOptionChips({
   options,
@@ -16,15 +79,12 @@ export function ChatOptionChips({
   return (
     <div className="mt-3 flex flex-wrap gap-2">
       {options.map((option, index) => (
-        <button
+        <OptionChip
           key={`${option.label}-${index}`}
-          type="button"
+          option={option}
           disabled={disabled}
-          onClick={() => onSelect(option)}
-          className="rounded-md border bg-white px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-        >
-          {option.label}
-        </button>
+          onSelect={onSelect}
+        />
       ))}
     </div>
   );

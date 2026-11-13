@@ -205,9 +205,8 @@ describe("buildAssistantMetadata", () => {
     });
   });
 
-  it("monta ticket_status com Não obrigado e analista só se overdue/critical", () => {
-    const decline = { label: "Não obrigado", message: "Não obrigado." };
-    const normal = parseAssistantMessageMetadata(
+  it("monta ticket_choice mesmo com um unico chamado", () => {
+    const metadata = parseAssistantMessageMetadata(
       buildAssistantMetadata({
         actions: [
           {
@@ -216,15 +215,43 @@ describe("buildAssistantMetadata", () => {
             tickets: [ticketA],
           },
         ],
+        lastUserMessage: "Quero consultar meus chamados.",
       }),
     );
-    expect(normal?.kind).toBe("ticket_status");
-    if (normal && "options" in normal) {
-      expect(normal.options ?? []).not.toContainEqual(ANALYST_OPTION);
-      expect(normal.options ?? []).toContainEqual(decline);
-      expect(normal.options ?? []).toContainEqual(END_CONVERSATION_OPTION);
-    }
 
+    expect(metadata?.kind).toBe("ticket_choice");
+    if (metadata && metadata.kind === "ticket_choice") {
+      expect(metadata.tickets).toHaveLength(1);
+      expect(metadata.options ?? []).toEqual([]);
+    }
+  });
+
+  it("monta ticket_status quando o codigo do chamado esta na mensagem", () => {
+    const decline = { label: "Não obrigado", message: "Não obrigado." };
+    const metadata = parseAssistantMessageMetadata(
+      buildAssistantMetadata({
+        actions: [
+          {
+            name: "list_my_tickets",
+            label: "listou",
+            tickets: [ticketA, ticketB],
+          },
+        ],
+        lastUserMessage: "Quero saber sobre o chamado NX-001 por gentileza",
+      }),
+    );
+
+    expect(metadata?.kind).toBe("ticket_status");
+    if (metadata && metadata.kind === "ticket_status") {
+      expect(metadata.ticket.id).toBe(ticketA.id);
+      expect(metadata.options ?? []).toContainEqual(decline);
+      expect(metadata.options ?? []).toContainEqual(END_CONVERSATION_OPTION);
+      expect(metadata.options ?? []).not.toContainEqual(ANALYST_OPTION);
+    }
+  });
+
+  it("monta ticket_status com analista quando o chamado citado esta vencido", () => {
+    const decline = { label: "Não obrigado", message: "Não obrigado." };
     const overdue = parseAssistantMessageMetadata(
       buildAssistantMetadata({
         actions: [
@@ -234,8 +261,11 @@ describe("buildAssistantMetadata", () => {
             tickets: [overdueTicket],
           },
         ],
+        lastUserMessage: "Quero saber sobre o chamado INC-20311",
       }),
     );
+
+    expect(overdue?.kind).toBe("ticket_status");
     if (overdue && "options" in overdue) {
       expect(overdue.options ?? []).toContainEqual(ANALYST_OPTION);
       expect(overdue.options ?? []).toContainEqual(decline);

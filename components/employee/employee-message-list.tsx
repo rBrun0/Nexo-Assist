@@ -8,6 +8,7 @@ import { AssistantMessageBlocks } from "@/components/chat/assistant-message-bloc
 import { ChatMessageFrame } from "@/components/chat/chat-message-frame";
 import { ChatTypingIndicator } from "@/components/chat/chat-typing-indicator";
 import type { AgentActivityStep } from "@/lib/agent/activity";
+import { formatAssistantRichText } from "@/lib/chat/format-assistant-rich-text";
 import type { ChatHistoryMessage } from "@/lib/types/conversation";
 import type {
   ChatOption,
@@ -126,10 +127,8 @@ export function EmployeeMessageList({
               />
             </div>
             {streamedResponseText ? (
-              <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm">
-                <p className="whitespace-pre-wrap text-sm leading-6">
-                  {streamedResponseText}
-                </p>
+              <div className="rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
+                {formatAssistantRichText(streamedResponseText)}
               </div>
             ) : (
               <ChatTypingIndicator label="digitando..." />

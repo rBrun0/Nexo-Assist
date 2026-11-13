@@ -1,6 +1,11 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
+import {
+  formatTicketCategoryLabel,
+  formatTicketPriorityLabel,
+  formatTicketStatusLabel,
+} from "@/lib/i18n/ticket-labels";
 import { getEmployeeTicketsForAgent } from "@/lib/services/conversations";
 import { daysPastDeadline } from "@/lib/services/ticket-sla";
 import { readServiceDeskContext } from "@/lib/mastra/request-context";
@@ -42,6 +47,9 @@ export const listMyTicketsTool = createTool({
           status: ticket.status,
           priority: ticket.priority,
           category: ticket.category,
+          statusLabel: formatTicketStatusLabel(ticket.status),
+          priorityLabel: formatTicketPriorityLabel(ticket.priority),
+          categoryLabel: formatTicketCategoryLabel(ticket.category),
           createdAt: new Date(ticket.createdAt).toISOString(),
           updatedAt: new Date(ticket.updatedAt).toISOString(),
           isOverdue: ticket.isOverdue,
