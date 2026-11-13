@@ -181,7 +181,13 @@ export async function runServiceDeskAgent({
   conversationId: string;
   selectedTicketId?: string;
 }) {
-  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+  const model = serviceDeskModelId();
+  const usesGroq = model.startsWith("groq/");
+  if (usesGroq) {
+    if (!process.env.GROQ_API_KEY?.trim()) {
+      throw new Error("GROQ_API_KEY não está configurada.");
+    }
+  } else if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim()) {
     throw new Error("GOOGLE_GENERATIVE_AI_API_KEY não está configurada.");
   }
   getMastra();
@@ -236,7 +242,6 @@ export async function runServiceDeskAgent({
     : undefined;
   const actions: ToolAction[] = [];
   const assessment: AgentAssessment = { confidenceScore: 100 };
-  const model = serviceDeskModelId();
   const messages = mapConversationHistory(history);
   const requestContext = new RequestContext();
   requestContext.set("userId", userId);
@@ -336,7 +341,9 @@ export async function runServiceDeskAgent({
           temperature: 0.2,
           maxOutputTokens: 700,
         },
-        providerOptions: GOOGLE_PROVIDER_OPTIONS,
+        ...(model.startsWith("google/")
+          ? { providerOptions: GOOGLE_PROVIDER_OPTIONS }
+          : {}),
         onChunk: (chunk: unknown) => {
           const call = readToolCall(chunk);
           if (!call) return;
