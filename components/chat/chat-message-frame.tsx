@@ -1,7 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { motion } from "motion/react";
+import type { ReactNode } from "react";
 
 import {
   ChatDaySeparator,
@@ -40,9 +40,7 @@ export function ChatMessageFrame({
   children: ReactNode;
 }) {
   const dayKey = getChatDayKey(createdAt);
-  const previousDayKey = previousCreatedAt
-    ? getChatDayKey(previousCreatedAt)
-    : null;
+  const previousDayKey = previousCreatedAt ? getChatDayKey(previousCreatedAt) : null;
   const showDaySeparator = dayKey !== previousDayKey;
   const hasThought = thoughtProcess !== undefined;
   const inlineHeader = thoughtHeaderLayout === "inline";
@@ -56,10 +54,7 @@ export function ChatMessageFrame({
       transition={{ duration: 0.18, ease: "easeOut" }}
     >
       {showDaySeparator ? (
-        <ChatDaySeparator
-          label={formatChatDayLabel(createdAt)}
-          tone={daySeparatorTone}
-        />
+        <ChatDaySeparator label={formatChatDayLabel(createdAt)} tone={daySeparatorTone} />
       ) : null}
       {isSystem ? (
         <ChatEventDivider label={systemLabel} createdAt={createdAt} />
@@ -67,12 +62,7 @@ export function ChatMessageFrame({
         <div className={cn("flex", alignEnd ? "justify-end" : "justify-start")}>
           <div className="min-w-0 w-full max-w-[min(92%,720px)]">
             {inlineHeader ? (
-              <div
-                className={cn(
-                  "relative mb-1.5 min-h-5 sm:mb-1",
-                  senderLabel && "pr-[7.5rem]",
-                )}
-              >
+              <div className={cn("relative mb-1.5 min-h-5 sm:mb-1", senderLabel && "pr-[7.5rem]")}>
                 {hasThought ? (
                   <ThoughtProcessBlock
                     thoughtProcess={thoughtProcess}
@@ -128,10 +118,7 @@ export function ChatMessageFrame({
                     )}
                   >
                     <p
-                      className={cn(
-                        "px-1 text-[11px] leading-5 font-medium",
-                        senderLabelClassName,
-                      )}
+                      className={cn("px-1 text-[11px] leading-5 font-medium", senderLabelClassName)}
                     >
                       {senderLabel}
                     </p>

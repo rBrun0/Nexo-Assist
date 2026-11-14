@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { login } from "@/lib/api/auth";
-import {
-  readRememberMePreference,
-  writeRememberMePreference,
-} from "@/lib/auth/remember-me";
+import { readRememberMePreference, writeRememberMePreference } from "@/lib/auth/remember-me";
 import { useLoginFields } from "@/lib/forms/use-login-fields";
 import type { LoginInput } from "@/lib/validations/auth";
 
@@ -15,9 +12,7 @@ export function useLoginForm() {
   const router = useRouter();
   const [formMessage, setFormMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rememberMe, setRememberMeState] = useState(() =>
-    readRememberMePreference(),
-  );
+  const [rememberMe, setRememberMeState] = useState(() => readRememberMePreference());
   const form = useLoginFields({ rememberMe });
 
   function setRememberMe(value: boolean) {
@@ -39,9 +34,7 @@ export function useLoginForm() {
       return;
     }
 
-    router.replace(
-      result.data.role === "ANALYST" ? "/analista" : "/servicedesk/atendimento",
-    );
+    router.replace(result.data.role === "ANALYST" ? "/analista" : "/servicedesk/atendimento");
     router.refresh();
     setIsSubmitting(false);
   }

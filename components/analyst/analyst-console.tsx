@@ -80,9 +80,7 @@ export function AnalystConsole({
             peerIsTyping={consoleState.peerIsTyping}
             onTypingActivity={consoleState.notifyTyping}
             onBack={consoleState.clearSelection}
-            onPerformAction={(action) =>
-              void consoleState.performConversationAction(action)
-            }
+            onPerformAction={(action) => void consoleState.performConversationAction(action)}
             onSendMessage={(event) => {
               consoleState.stopTyping();
               consoleState.sendMessage(event);

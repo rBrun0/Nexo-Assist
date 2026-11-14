@@ -1,7 +1,7 @@
 "use client";
 
-import type { RefObject } from "react";
 import { motion } from "motion/react";
+import type { RefObject } from "react";
 
 import { AgentActivityTrail } from "@/components/chat/agent-activity-trail";
 import { AssistantMessageBlocks } from "@/components/chat/assistant-message-blocks";
@@ -39,10 +39,7 @@ export function EmployeeMessageList({
   lastInteractiveAssistantMessageId: string | null;
   messagesEndRef: RefObject<HTMLDivElement | null>;
   onOptionSelect: (option: ChatOption) => void;
-  onTicketSelect: (
-    ticket: TicketChoiceItem,
-    intent: TicketChoiceIntent,
-  ) => void;
+  onTicketSelect: (ticket: TicketChoiceItem, intent: TicketChoiceIntent) => void;
   onArticleSelect: (article: { title: string; category?: string }) => void;
   onConfirmDraft: (draftMessageId: string) => void;
   onEditDraft: () => void;
@@ -72,9 +69,7 @@ export function EmployeeMessageList({
             isSystem={isSystemMessage}
             systemLabel={chatMessage.content}
             senderLabel={senderLabel}
-            thoughtProcess={
-              isAssistantMessage ? chatMessage.thoughtProcess : undefined
-            }
+            thoughtProcess={isAssistantMessage ? chatMessage.thoughtProcess : undefined}
             messageId={isAssistantMessage ? chatMessage.id : undefined}
             thoughtHeaderLayout={isAssistantMessage ? "label-start" : "stacked"}
             alignEnd={isEmployeeMessage}
@@ -123,10 +118,7 @@ export function EmployeeMessageList({
               <p className="shrink-0 px-1 text-[11px] leading-5 font-medium text-slate-500">
                 Nexo Assist
               </p>
-              <AgentActivityTrail
-                steps={agentActivitySteps}
-                className="min-w-0 flex-1"
-              />
+              <AgentActivityTrail steps={agentActivitySteps} className="min-w-0 flex-1" />
             </div>
             {streamedResponseText ? (
               <div className="rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">

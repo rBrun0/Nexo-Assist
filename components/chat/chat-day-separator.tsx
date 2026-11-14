@@ -13,21 +13,11 @@ export function formatChatDayLabel(isoDate: string, now = new Date()) {
   const date = new Date(isoDate);
   if (!Number.isFinite(date.getTime())) return "";
 
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  const startOfMessageDay = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
+  const startOfMessageDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  const diffDays = Math.round(
-    (startOfToday.getTime() - startOfMessageDay.getTime()) / 86_400_000,
-  );
+  const diffDays = Math.round((startOfToday.getTime() - startOfMessageDay.getTime()) / 86_400_000);
 
   if (diffDays === 0) return "Hoje";
   if (diffDays === 1) return "Ontem";

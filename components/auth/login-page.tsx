@@ -18,15 +18,8 @@ export function LoginPage({
   resolvedWithoutQueuePercent: number;
   showDemoAccounts?: boolean;
 }) {
-  const {
-    register,
-    handleSubmit,
-    errors,
-    formMessage,
-    isSubmitting,
-    rememberMe,
-    setRememberMe,
-  } = useLoginForm();
+  const { register, handleSubmit, errors, formMessage, isSubmitting, rememberMe, setRememberMe } =
+    useLoginForm();
   const onlineAnalystsCount = useOnlineAnalystsCount();
 
   return (
@@ -53,17 +46,14 @@ export function LoginPage({
         </div>
 
         <div className="relative z-10 my-auto max-w-xl py-10">
-          <div className="mb-3 text-sm text-zinc-400">
-            Service desk de TI da Nexo
-          </div>
+          <div className="mb-3 text-sm text-zinc-400">Service desk de TI da Nexo</div>
           <h1 className="font-newsreader max-w-lg text-4xl leading-[1.13] tracking-[-0.04em] xl:text-5xl">
-            <span className="text-nowrap">Seu problema de TI, resolvido</span>{" "}
-            <br /> <span>em uma conversa.</span>
+            <span className="text-nowrap">Seu problema de TI, resolvido</span> <br />{" "}
+            <span>em uma conversa.</span>
           </h1>
           <p className="mt-5 max-w-md text-sm leading-6 text-zinc-400">
             Descreva o que está acontecendo. O assistente consulta seus <br />
-            chamados, busca na central de ajuda e chama um analista quando{" "}
-            <br />
+            chamados, busca na central de ajuda e chama um analista quando <br />
             precisa.
           </p>
 
@@ -79,8 +69,8 @@ export function LoginPage({
                 <span className="text-zinc-400">criou um chamado</span>
               </div>
               <div className="w-fit rounded-xl rounded-tl-sm bg-gray-800 px-4 py-2 text-xs leading-5 text-white shadow-sm">
-                Pronto. Abri o chamado com prioridade alta. Um analista fala com
-                você em até 4h úteis.
+                Pronto. Abri o chamado com prioridade alta. Um analista fala com você em até 4h
+                úteis.
               </div>
               <div className="flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-1 text-xs leading-5 text-slate-700 shadow-sm">
                 <span className="rounded-full bg-orange-300 p-1" />{" "}
@@ -102,9 +92,7 @@ export function LoginPage({
               </p>
             </div>
             <div className="px-3 text-center font-newsreader first:pl-0 last:pr-0">
-              <p className="pl-11 text-left text-3xl text-white">
-                {resolvedWithoutQueuePercent}%
-              </p>
+              <p className="pl-11 text-left text-3xl text-white">{resolvedWithoutQueuePercent}%</p>
               <p className="mt-1 text-[10px] leading-4 text-zinc-400 sm:text-xs">
                 Resolvidos sem fila
               </p>
@@ -129,9 +117,7 @@ export function LoginPage({
       <section className="relative flex h-full min-h-0 flex-col overflow-hidden px-6 pt-14 pb-14 sm:px-10 lg:px-12">
         <p className="absolute top-4 right-4 z-20 max-w-[min(100%-2rem,18rem)] text-right text-[11px] leading-4 sm:top-6 sm:right-6 sm:text-xs text-zinc-600">
           Problemas para entrar?{" "}
-          <span className="font-medium text-brand-action">
-            Ligue no ramal 4000
-          </span>
+          <span className="font-medium text-brand-action">Ligue no ramal 4000</span>
         </p>
         <p className="absolute bottom-4 left-4 z-20 text-[11px] leading-4 text-slate-600 sm:bottom-10 sm:left-12 sm:text-xs">
           © 2026 Nexo - Service desk de TI
@@ -164,20 +150,10 @@ export function LoginPage({
               </p>
               {showDemoAccounts ? (
                 <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-                  Ambiente de demonstração: as contas de exemplo aceitam qualquer
-                  senha.{" "}
-                  <span className="font-medium text-slate-700">
-                    carlos.silva@nexo.com.br
-                  </span>
-                  ,{" "}
-                  <span className="font-medium text-slate-700">
-                    ana.souza@nexo.com.br
-                  </span>{" "}
-                  ou{" "}
-                  <span className="font-medium text-slate-700">
-                    analista.ti@nexo.com.br
-                  </span>
-                  .
+                  Ambiente de demonstração: as contas de exemplo aceitam qualquer senha.{" "}
+                  <span className="font-medium text-slate-700">carlos.silva@nexo.com.br</span>,{" "}
+                  <span className="font-medium text-slate-700">ana.souza@nexo.com.br</span> ou{" "}
+                  <span className="font-medium text-slate-700">analista.ti@nexo.com.br</span>.
                 </p>
               ) : null}
             </div>

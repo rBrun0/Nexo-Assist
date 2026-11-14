@@ -1,12 +1,7 @@
 "use client";
 
+import { LogOut, MessageSquare, MessageSquareText, UserRound } from "lucide-react";
 import Link from "next/link";
-import {
-  LogOut,
-  MessageSquare,
-  MessageSquareText,
-  UserRound,
-} from "lucide-react";
 
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { UserAvatar } from "@/components/chat/user-avatar";
@@ -80,11 +75,7 @@ export function EmployeeSidebar({
 
       <SidebarFooter className="mt-auto px-4 pb-2 gap-1">
         <SidebarSeparator className="mb-4 bg-slate-200" />
-        <User
-          name={employee.name}
-          initials={employee.initials}
-          email={employee.email}
-        />
+        <User name={employee.name} initials={employee.initials} email={employee.email} />
         <AlertDialog>
           <AlertDialog.Trigger>
             <Button
@@ -99,14 +90,10 @@ export function EmployeeSidebar({
           </AlertDialog.Trigger>
           <AlertDialog.Content>
             <AlertDialog.Title>Tem certeza que deseja sair?</AlertDialog.Title>
-            <AlertDialog.Description>
-              Você será deslogado da sua conta.
-            </AlertDialog.Description>
+            <AlertDialog.Description>Você será deslogado da sua conta.</AlertDialog.Description>
             <AlertDialog.Footer>
               <div className="flex items-center justify-end gap-2">
-                <AlertDialog.Cancel className={"h-full"}>
-                  Cancelar
-                </AlertDialog.Cancel>
+                <AlertDialog.Cancel className={"h-full"}>Cancelar</AlertDialog.Cancel>
                 {/* <AlertDialog.Action> */}
                 <Button
                   variant="destructive"
@@ -132,15 +119,7 @@ export function EmployeeSidebar({
   );
 }
 
-const User = ({
-  name,
-  initials,
-  email,
-}: {
-  name: string;
-  initials: string;
-  email: string;
-}) => {
+const User = ({ name, initials, email }: { name: string; initials: string; email: string }) => {
   return (
     <div className="flex items-center gap-3 px-1">
       <UserAvatar
@@ -149,9 +128,7 @@ const User = ({
         aria-label={`Foto de ${name}`}
       />
       <div className="min-w-0 flex-1 leading-tight">
-        <p className="truncate text-[14px] font-semibold text-slate-800">
-          {name}
-        </p>
+        <p className="truncate text-[14px] font-semibold text-slate-800">{name}</p>
         <p className="truncate text-[11px] text-slate-500">{email}</p>
       </div>
     </div>

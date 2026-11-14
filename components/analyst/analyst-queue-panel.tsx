@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { ConversationQueue } from "@/components/analyst/conversation-queue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type ConversationFilter } from "@/lib/analyst/conversation-filters";
+import type { ConversationFilter } from "@/lib/analyst/conversation-filters";
 import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
 import { cn } from "@/lib/utils";
 
@@ -61,10 +61,7 @@ export function AnalystQueuePanel({
             className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
             aria-label="Status: disponível"
           >
-            <span
-              className="size-1.5 rounded-full bg-emerald-500"
-              aria-hidden
-            />
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
             Disponível
           </span>
         </div>

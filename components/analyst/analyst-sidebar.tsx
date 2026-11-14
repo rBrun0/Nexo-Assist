@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { LogOut, MessageCircle } from "lucide-react";
+import Link from "next/link";
 
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { UserAvatar } from "@/components/chat/user-avatar";
@@ -31,8 +31,7 @@ export function AnalystSidebar({
   onLogout: () => void;
 }) {
   const initials = getInitials(currentAnalystName);
-  const unreadBadge =
-    conversationsWithUnread > 9 ? "9+" : String(conversationsWithUnread);
+  const unreadBadge = conversationsWithUnread > 9 ? "9+" : String(conversationsWithUnread);
   const conversationsLabel =
     conversationsWithUnread > 0
       ? `Conversas, ${conversationsWithUnread} com mensagens novas`
@@ -134,10 +133,7 @@ export function AnalystSidebar({
           <LogOut className="size-4" />
         </button>
         {logoutError ? (
-          <p
-            role="alert"
-            className="max-w-24 text-center text-[10px] text-red-600"
-          >
+          <p role="alert" className="max-w-24 text-center text-[10px] text-red-600">
             {logoutError}
           </p>
         ) : null}

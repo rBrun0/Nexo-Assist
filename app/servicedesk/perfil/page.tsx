@@ -1,5 +1,5 @@
-import { EmployeePage } from "@/components/employee/employee-page";
 import { redirect } from "next/navigation";
+import { EmployeePage } from "@/components/employee/employee-page";
 import { getCurrentUser } from "@/lib/auth/session";
 
 export default async function ServiceDeskProfilePage({
