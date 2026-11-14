@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Newsreader, Schibsted_Grotesk } from "next/font/google";
+import type { ReactNode } from "react";
 
 import { Providers } from "@/app/providers";
 import "./globals.css";
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   description: "Atendimento de TI simples e inteligente para você.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="pt-BR"
