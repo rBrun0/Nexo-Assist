@@ -5,6 +5,7 @@ import { CheckCheck } from "lucide-react";
 import { ChatMessageFrame } from "@/components/chat/chat-message-frame";
 import { Badge } from "@/components/ui/badge";
 import type { AnalystChatMessage } from "@/lib/analyst/map-conversation";
+import { formatAssistantRichText } from "@/lib/chat/format-assistant-rich-text";
 import { cn } from "@/lib/utils";
 
 export function AnalystChatMessageBubble({
@@ -84,7 +85,13 @@ export function AnalystChatMessageBubble({
               : "rounded-tl-sm border border-slate-200 bg-white",
         )}
       >
-        <p className="text-[14.5px] leading-5">{message.text}</p>
+        {isAssistant ? (
+          formatAssistantRichText(message.text)
+        ) : (
+          <p className="whitespace-pre-wrap text-[14.5px] leading-5">
+            {message.text}
+          </p>
+        )}
         <p className="absolute right-3 bottom-1 flex items-center justify-end gap-1 text-[10px] text-zinc-500">
           {message.time}
           {isAnalyst ? (

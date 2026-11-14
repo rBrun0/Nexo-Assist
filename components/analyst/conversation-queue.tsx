@@ -19,6 +19,7 @@ export function ConversationQueue({
   currentAnalystId,
   now,
   employeeIsOnline,
+  typingBySessionId = {},
   onSelect,
 }: {
   conversations: AnalystConversationListItem[];
@@ -26,6 +27,7 @@ export function ConversationQueue({
   currentAnalystId: string;
   now: number;
   employeeIsOnline: boolean;
+  typingBySessionId?: Record<string, boolean>;
   onSelect: (conversationId: string) => void;
 }) {
   if (conversations.length === 0) {
@@ -93,8 +95,16 @@ export function ConversationQueue({
                 </span>
               </span>
               <span className="flex items-center justify-between gap-2">
-                <span className="truncate text-[11px] text-slate-500">
-                  {preview}
+                <span
+                  className={cn(
+                    "truncate text-[11px] text-slate-500",
+                    typingBySessionId[conversation.id] &&
+                      "italic text-success",
+                  )}
+                >
+                  {typingBySessionId[conversation.id]
+                    ? "digitando..."
+                    : preview}
                 </span>
                 {conversation.unread > 0 && (
                   <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-brand-action text-[10px] font-semibold text-white">

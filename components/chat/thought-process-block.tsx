@@ -77,10 +77,12 @@ export function ThoughtProcessBlock({
         : score != null
           ? `${score}%`
           : null;
-  const hasDetails = confidenceText != null || rationale != null;
+  const hasMeta = confidenceText != null || rationale != null;
+  const hasSteps = steps.length > 0;
+  const showPopover = hasMeta || hasSteps;
 
-  if (!showTrail && !hasDetails) return null;
-  if (showTrail && steps.length === 0 && !hasDetails) return null;
+  if (!showTrail && !showPopover) return null;
+  if (showTrail && !hasSteps && !hasMeta) return null;
 
   const pastelKey =
     confidenceKey && confidenceKey in CONFIDENCE_LABELS
@@ -90,11 +92,11 @@ export function ThoughtProcessBlock({
   return (
     <div
       className={cn(
-        "mb-0 flex min-w-0 flex-wrap items-center gap-1.5",
+        "mb-0 flex min-w-0 flex-nowrap items-center gap-1.5",
         className,
       )}
     >
-      {hasDetails ? (
+      {showPopover ? (
         <Popover>
           <PopoverTrigger
             render={
@@ -112,16 +114,24 @@ export function ThoughtProcessBlock({
           <PopoverContent
             align="start"
             side="bottom"
-            className="w-[min(18rem,calc(100vw-2rem))] gap-2 p-3"
+            className="w-[min(18rem,calc(100vw-2rem))] gap-2.5 p-3"
           >
             <PopoverHeader>
               <PopoverTitle className="text-sm text-slate-900">
                 Decisão do agente
               </PopoverTitle>
               <PopoverDescription className="text-[12px] leading-4 text-slate-500">
-                Resumo público da confiança e do motivo desta resposta.
+                Resumo público das ações, confiança e motivo desta resposta.
               </PopoverDescription>
             </PopoverHeader>
+            {hasSteps ? (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-medium text-slate-500">
+                  Ações
+                </span>
+                <AgentActivityTrail steps={steps} stacked />
+              </div>
+            ) : null}
             {confidenceText ? (
               <div className="flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-2">
@@ -151,7 +161,7 @@ export function ThoughtProcessBlock({
           </PopoverContent>
         </Popover>
       ) : null}
-      {showTrail && steps.length > 0 ? (
+      {showTrail && hasSteps ? (
         <AgentActivityTrail steps={steps} className="mb-0 min-w-0 flex-1" />
       ) : null}
     </div>

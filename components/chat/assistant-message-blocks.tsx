@@ -68,6 +68,7 @@ const ASSISTANT_TURN_BY_KIND: {
 } = {
   impact_choice: (metadata, ctx) => (
     <ImpactChoiceTurn
+      content={ctx.content}
       question={metadata.question}
       options={metadata.options}
       createdAt={ctx.createdAt}

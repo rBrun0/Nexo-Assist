@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   MoreVertical,
   Search,
+  Settings,
   X,
 } from "lucide-react";
 
@@ -29,7 +30,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
 import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
-import { cn } from "@/lib/utils";
 
 type WorkingAction =
   | "claim"
@@ -72,7 +72,6 @@ export function AnalystChatHeader({
   onShowAiThoughtProcessChange: (value: boolean) => void;
 }) {
   const jobLabel = conversation.job?.trim() || null;
-  const ticketCode = conversation.ticketCode;
   const footerUi = getAnalystFooterUi({
     status: conversation.status,
     assignedAnalystId: conversation.assignedAnalystId,
@@ -85,8 +84,8 @@ export function AnalystChatHeader({
       ref={searchContainerRef}
       className="relative z-30 shrink-0 border-b border-slate-200 bg-white"
     >
-      <div className="flex h-[65px] items-center justify-between gap-3 px-4 sm:px-5">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex h-[65px] items-center gap-2 px-3 sm:gap-3 sm:px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -100,14 +99,14 @@ export function AnalystChatHeader({
             initials={conversation.initials}
             online={employeeIsOnline}
             pastelFromText={conversation.name}
-            className="size-12 text-[14px]"
+            className="size-9 shrink-0 text-[12px] sm:size-12 sm:text-[14px]"
           />
-          <div className="min-w-0">
-            <h2 className="truncate text-[13px] font-semibold text-slate-900">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-[13px] font-semibold text-slate-900 sm:text-[14px]">
               {conversation.name}
             </h2>
             <p className="flex min-w-0 items-center gap-1.5 truncate text-[11px]">
-              <span className={cn("font-medium", "text-zinc-500")}>
+              <span className="font-medium text-zinc-500">
                 {employeeIsOnline ? "Online" : "Offline"}
               </span>
               {jobLabel ? (
@@ -121,89 +120,182 @@ export function AnalystChatHeader({
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
           {showAssignedToolbar ? (
             <>
-              <AlertDialog>
-                <AlertDialog.Trigger>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isWorking}
-                    size="lg"
-                    className="flex items-center gap-2 text-[11px] text-zinc-700"
-                  >
-                    <Bot className="size-3" />
-                    <span className="font-semibold">
+              <div className="hidden items-center gap-2 sm:flex">
+                <AlertDialog>
+                  <AlertDialog.Trigger>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isWorking}
+                      size="lg"
+                      className="flex items-center gap-2 text-[11px] text-zinc-700"
+                    >
+                      <Bot className="size-3" />
+                      <span className="font-semibold">
+                        {workingAction === "return_to_bot"
+                          ? "Devolvendo..."
+                          : "Devolver ao agent"}
+                      </span>
+                    </Button>
+                  </AlertDialog.Trigger>
+                  <AlertDialog.Content>
+                    <AlertDialog.Header>
+                      <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
+                      <AlertDialog.Description>
+                        O Nexo Assist volta a atender esta conversa e você deixa
+                        de controlar o chat.
+                      </AlertDialog.Description>
+                    </AlertDialog.Header>
+                    <AlertDialog.Footer>
+                      <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                      <AlertDialog.Action
+                        onClick={() => onPerformAction("return_to_bot")}
+                      >
+                        Confirmar devolução
+                      </AlertDialog.Action>
+                    </AlertDialog.Footer>
+                  </AlertDialog.Content>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialog.Trigger>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={isWorking}
+                      className="flex items-center gap-2 text-[11px] text-red-600"
+                    >
+                      <CircleCheckBig className="size-3" />
+                      <span className="font-semibold">
+                        {workingAction === "close"
+                          ? "Encerrando..."
+                          : "Encerrar atendimento"}
+                      </span>
+                    </Button>
+                  </AlertDialog.Trigger>
+                  <AlertDialog.Content>
+                    <AlertDialog.Header>
+                      <AlertDialog.Title>
+                        Encerrar atendimento?
+                      </AlertDialog.Title>
+                      <AlertDialog.Description>
+                        A conversa será encerrada e o colaborador não poderá
+                        continuar neste atendimento.
+                      </AlertDialog.Description>
+                    </AlertDialog.Header>
+                    <AlertDialog.Footer>
+                      <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                      <AlertDialog.Action
+                        onClick={() => onPerformAction("close")}
+                      >
+                        Encerrar
+                      </AlertDialog.Action>
+                    </AlertDialog.Footer>
+                  </AlertDialog.Content>
+                </AlertDialog>
+              </div>
+
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={isWorking}
+                      aria-label="Ações do atendimento"
+                      className="text-slate-500 sm:hidden"
+                    />
+                  }
+                >
+                  <MoreVertical className="size-[18px]" />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="end"
+                  side="bottom"
+                  className="w-56 gap-1 p-2 sm:hidden"
+                >
+                  <AlertDialog>
+                    <AlertDialog.Trigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={isWorking}
+                          className="h-9 w-full justify-start gap-2 px-2 text-[12px] text-zinc-700"
+                        />
+                      }
+                    >
+                      <Bot className="size-3.5" />
                       {workingAction === "return_to_bot"
                         ? "Devolvendo..."
                         : "Devolver ao agent"}
-                    </span>
-                  </Button>
-                </AlertDialog.Trigger>
-                <AlertDialog.Content>
-                  <AlertDialog.Header>
-                    <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
-                    <AlertDialog.Description>
-                      O Nexo Assist volta a atender esta conversa e você deixa
-                      de controlar o chat.
-                    </AlertDialog.Description>
-                  </AlertDialog.Header>
-                  <AlertDialog.Footer>
-                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-                    <AlertDialog.Action
-                      onClick={() => onPerformAction("return_to_bot")}
+                    </AlertDialog.Trigger>
+                    <AlertDialog.Content>
+                      <AlertDialog.Header>
+                        <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
+                        <AlertDialog.Description>
+                          O Nexo Assist volta a atender esta conversa e você
+                          deixa de controlar o chat.
+                        </AlertDialog.Description>
+                      </AlertDialog.Header>
+                      <AlertDialog.Footer>
+                        <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                        <AlertDialog.Action
+                          onClick={() => onPerformAction("return_to_bot")}
+                        >
+                          Confirmar devolução
+                        </AlertDialog.Action>
+                      </AlertDialog.Footer>
+                    </AlertDialog.Content>
+                  </AlertDialog>
+                  <AlertDialog>
+                    <AlertDialog.Trigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={isWorking}
+                          className="h-9 w-full justify-start gap-2 px-2 text-[12px] text-red-600"
+                        />
+                      }
                     >
-                      Confirmar devolução
-                    </AlertDialog.Action>
-                  </AlertDialog.Footer>
-                </AlertDialog.Content>
-              </AlertDialog>
-              <AlertDialog>
-                <AlertDialog.Trigger>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={isWorking}
-                    className="flex items-center gap-2 text-[11px] text-red-600"
-                  >
-                    <CircleCheckBig className="size-3" />
-                    <span className="font-semibold">
+                      <CircleCheckBig className="size-3.5" />
                       {workingAction === "close"
                         ? "Encerrando..."
                         : "Encerrar atendimento"}
-                    </span>
-                  </Button>
-                </AlertDialog.Trigger>
-                <AlertDialog.Content>
-                  <AlertDialog.Header>
-                    <AlertDialog.Title>Encerrar atendimento?</AlertDialog.Title>
-                    <AlertDialog.Description>
-                      A conversa será encerrada e o colaborador não poderá
-                      continuar neste atendimento.
-                    </AlertDialog.Description>
-                  </AlertDialog.Header>
-                  <AlertDialog.Footer>
-                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-                    <AlertDialog.Action
-                      onClick={() => onPerformAction("close")}
-                    >
-                      Encerrar
-                    </AlertDialog.Action>
-                  </AlertDialog.Footer>
-                </AlertDialog.Content>
-              </AlertDialog>
+                    </AlertDialog.Trigger>
+                    <AlertDialog.Content>
+                      <AlertDialog.Header>
+                        <AlertDialog.Title>
+                          Encerrar atendimento?
+                        </AlertDialog.Title>
+                        <AlertDialog.Description>
+                          A conversa será encerrada e o colaborador não poderá
+                          continuar neste atendimento.
+                        </AlertDialog.Description>
+                      </AlertDialog.Header>
+                      <AlertDialog.Footer>
+                        <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                        <AlertDialog.Action
+                          onClick={() => onPerformAction("close")}
+                        >
+                          Encerrar
+                        </AlertDialog.Action>
+                      </AlertDialog.Footer>
+                    </AlertDialog.Content>
+                  </AlertDialog>
+                </PopoverContent>
+              </Popover>
             </>
           ) : (
-            <>
-              {/* {ticketCode ? (
-                <span className="hidden rounded-md bg-slate-100 px-2 py-1 text-[10px] font-semibold tracking-wide text-slate-600 sm:inline-flex">
-                  {ticketCode}
-                </span>
-              ) : null} */}
+            <div className="hidden sm:block">
               <ConversationStatusChip status={conversation.status} />
-            </>
+            </div>
           )}
+
           <Button
             variant="ghost"
             size="icon"
@@ -212,7 +304,7 @@ export function AnalystChatHeader({
             }
             aria-pressed={isSearchOpen}
             onClick={onToggleSearch}
-            className="text-slate-500"
+            className="size-8 text-slate-500 sm:size-9"
           >
             {isSearchOpen ? (
               <X className="size-[18px]" />
@@ -227,17 +319,23 @@ export function AnalystChatHeader({
                   variant="ghost"
                   size="icon"
                   aria-label="Opções de visualização da conversa"
-                  className="text-slate-500"
+                  className="size-8 text-slate-500 sm:size-9"
                 />
               }
             >
-              <MoreVertical className="size-[18px]" />
+              <Settings className="size-[18px]" />
             </PopoverTrigger>
             <PopoverContent
               align="end"
               side="bottom"
               className="w-72 gap-3 p-3"
             >
+              <div className="flex items-center justify-between gap-3 sm:hidden">
+                <span className="text-[12px] font-medium text-slate-700">
+                  Status
+                </span>
+                <ConversationStatusChip status={conversation.status} />
+              </div>
               <PopoverHeader>
                 <PopoverTitle className="text-sm text-slate-900">
                   Raciocínio da IA
@@ -270,7 +368,7 @@ export function AnalystChatHeader({
             size="icon"
             aria-label="Ver chamados do colaborador"
             onClick={onOpenTickets}
-            className="text-slate-500 xl:hidden"
+            className="size-8 text-slate-500 sm:size-9 xl:hidden"
           >
             <MoreHorizontal className="size-[18px]" />
           </Button>

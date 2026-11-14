@@ -62,6 +62,9 @@ export function AnalystChatPanel({
   onPerformAction,
   onSendMessage,
   onTicketStatusChange,
+  peerIsTyping = false,
+  onTypingActivity,
+  onUnseenCountChange,
 }: {
   conversation: AnalystConversationListItem | null;
   currentAnalystId: string;
@@ -78,6 +81,9 @@ export function AnalystChatPanel({
   onPerformAction: (action: "claim" | "return_to_bot" | "close") => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
   onTicketStatusChange?: (ticketId: string, status: string) => Promise<void>;
+  peerIsTyping?: boolean;
+  onTypingActivity?: () => void;
+  onUnseenCountChange?: (count: number) => void;
 }) {
   const conversationId = conversation?.id ?? null;
   const messageSearch = useConversationMessageSearch(conversationId);
@@ -150,6 +156,8 @@ export function AnalystChatPanel({
             currentAnalystId={currentAnalystId}
             currentAnalystName={currentAnalystName}
             showAiThoughtProcess={showAiThoughtProcess}
+            peerIsTyping={peerIsTyping}
+            onUnseenCountChange={onUnseenCountChange}
           />
 
           <AnalystChatFooter
@@ -161,6 +169,7 @@ export function AnalystChatPanel({
             workingAction={workingAction}
             currentAnalystId={currentAnalystId}
             onDraftChange={onDraftChange}
+            onTypingActivity={onTypingActivity}
             onPerformAction={onPerformAction}
             onSendMessage={onSendMessage}
           />

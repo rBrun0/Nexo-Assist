@@ -47,6 +47,7 @@ export function AnalystConsole({
             conversationFilter={consoleState.conversationFilter}
             hasSelectedConversation={Boolean(consoleState.selectedConversation)}
             employeeIsOnline={consoleState.employeeIsOnline}
+            typingBySessionId={consoleState.typingBySessionId}
             onSearchChange={consoleState.setSearch}
             onFilterChange={consoleState.setConversationFilter}
             onSelect={(conversationId) => {
@@ -66,12 +67,18 @@ export function AnalystConsole({
             isWorking={consoleState.isWorking}
             workingAction={consoleState.workingAction}
             onDraftChange={consoleState.setDraft}
+            peerIsTyping={consoleState.peerIsTyping}
+            onTypingActivity={consoleState.notifyTyping}
             onBack={consoleState.clearSelection}
             onPerformAction={(action) =>
               void consoleState.performConversationAction(action)
             }
-            onSendMessage={consoleState.sendMessage}
+            onSendMessage={(event) => {
+              consoleState.stopTyping();
+              consoleState.sendMessage(event);
+            }}
             onTicketStatusChange={consoleState.handleTicketStatusChange}
+            onUnseenCountChange={consoleState.setOpenChatUnseen}
           />
 
           {consoleState.selectedConversation ? (

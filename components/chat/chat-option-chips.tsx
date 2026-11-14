@@ -33,8 +33,8 @@ function OptionChip({
           <AlertDialog.Header>
             <AlertDialog.Title>Encerrar conversa?</AlertDialog.Title>
             <AlertDialog.Description>
-              Esta conversa será encerrada. Você poderá abrir outra depois se
-              precisar de ajuda.
+              Que bom que seu problema foi resolvido! Se precisar de ajuda, você
+              pode abrir outra conversa depois.
             </AlertDialog.Description>
           </AlertDialog.Header>
           <AlertDialog.Footer>

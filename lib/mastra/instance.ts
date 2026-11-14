@@ -4,7 +4,11 @@ import { PostgresStore } from "@mastra/pg";
 import { classifyTurnAgent } from "@/lib/mastra/agents/classify-turn";
 import { serviceDeskAgent } from "@/lib/mastra/agents/service-desk";
 import { registerOpenTicketRunner } from "@/lib/mastra/registry";
-import { openTicketSuspendSchema, openTicketResultSchema, openTicketWorkflow } from "@/lib/mastra/workflows/open-ticket";
+import {
+  openTicketSuspendSchema,
+  openTicketResultSchema,
+  openTicketWorkflow,
+} from "@/lib/mastra/workflows/open-ticket";
 
 let mastra: Mastra | undefined;
 let ready: Promise<void> | undefined;

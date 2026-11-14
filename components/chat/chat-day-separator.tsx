@@ -32,9 +32,15 @@ export function formatChatDayLabel(isoDate: string, now = new Date()) {
   if (diffDays === 0) return "Hoje";
   if (diffDays === 1) return "Ontem";
 
+  if (diffDays > 1 && diffDays < 7) {
+    return new Intl.DateTimeFormat("pt-BR", {
+      weekday: "long",
+    }).format(date);
+  }
+
   return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
+    day: "numeric",
+    month: "long",
     year: "numeric",
   }).format(date);
 }
@@ -44,7 +50,7 @@ export function ChatDaySeparator({ label }: { label: string }) {
 
   return (
     <div className="flex items-center justify-center py-2" role="separator">
-      <span className="rounded-full bg-slate-200/80 px-3 py-1 text-[10px] font-medium text-slate-600 shadow-sm">
+      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-medium text-slate-600 shadow-xs">
         {label}
       </span>
     </div>

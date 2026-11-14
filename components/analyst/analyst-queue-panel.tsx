@@ -27,6 +27,7 @@ export function AnalystQueuePanel({
   conversationFilter,
   hasSelectedConversation,
   employeeIsOnline,
+  typingBySessionId = {},
   onSearchChange,
   onFilterChange,
   onSelect,
@@ -40,6 +41,7 @@ export function AnalystQueuePanel({
   conversationFilter: ConversationFilter;
   hasSelectedConversation: boolean;
   employeeIsOnline: boolean;
+  typingBySessionId?: Record<string, boolean>;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: ConversationFilter) => void;
   onSelect: (conversationId: string) => void;
@@ -105,6 +107,7 @@ export function AnalystQueuePanel({
           currentAnalystId={currentAnalystId}
           now={now}
           employeeIsOnline={employeeIsOnline}
+          typingBySessionId={typingBySessionId}
           onSelect={onSelect}
         />
       </div>

@@ -30,14 +30,12 @@ export function EmployeeEmptyState({
   onSuggestionSelect: (title: string) => void;
 }) {
   return (
-    <div className="flex min-h-full flex-col justify-center pb-8">
-      <p className="mb-2 text-sm font-medium text-brand-logo">
-        Olá, {firstName} 👋
-      </p>
+    <div className="flex min-h-full flex-col justify-center pb-8 pt-6 md:pt-0">
+      <p className="text-sm font-medium text-brand-logo">Olá, {firstName}!</p>
       <h1 className="max-w-[540px] text-[32px] leading-[1.18] font-semibold tracking-[-0.04em] text-slate-900 sm:text-[40px]">
         Como podemos facilitar seu dia?
       </h1>
-      <p className="mt-3 max-w-lg text-sm leading-6 text-slate-500">
+      <p className="max-w-lg text-sm leading-6 text-slate-500">
         {endedNotice
           ? "Atendimento encerrado. Envie uma mensagem para começar outro."
           : "Tire dúvidas, resolva problemas de TI ou acompanhe seus chamados. É só começar por aqui."}

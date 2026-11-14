@@ -70,8 +70,21 @@ export function TicketChoiceList({
                 checked={isSelected}
                 disabled={disabled}
                 onChange={() => setSelectedTicketId(ticket.id)}
-                className="mt-1 size-4 accent-brand-action"
+                className="sr-only"
               />
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                  isSelected
+                    ? "border-brand-action bg-brand-action"
+                    : "border-slate-300 bg-white",
+                )}
+              >
+                {isSelected ? (
+                  <span className="size-1.5 rounded-full bg-white" />
+                ) : null}
+              </span>
               <div className="grid w-full grid-cols-12 items-center gap-3">
                 <div className="col-span-8 flex min-w-0 items-center gap-3">
                   <div className="flex min-w-0 items-center gap-2">

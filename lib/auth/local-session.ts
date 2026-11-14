@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { Role } from "@prisma/client";
 
 export const LOCAL_SESSION_COOKIE = "nexo_session";
@@ -30,7 +31,8 @@ function sign(payload: string) {
     .digest("base64url");
 }
 
-function isLocalSession(value: unknown): value is LocalSession {
+/** Valida o formato do payload; a expiração fica para depois de `connection()`. */
+function isLocalSessionShape(value: unknown): value is LocalSession {
   if (typeof value !== "object" || value === null) return false;
   const session = value as Record<string, unknown>;
   return (
@@ -39,8 +41,12 @@ function isLocalSession(value: unknown): value is LocalSession {
     typeof session.email === "string" &&
     (session.role === "EMPLOYEE" || session.role === "ANALYST") &&
     typeof session.expiresAt === "number" &&
-    session.expiresAt > Math.floor(Date.now() / 1000)
+    Number.isFinite(session.expiresAt)
   );
+}
+
+function isSessionUnexpired(session: LocalSession, nowSeconds: number) {
+  return session.expiresAt > nowSeconds;
 }
 
 export async function setLocalSession(
@@ -52,6 +58,7 @@ export async function setLocalSession(
   },
   options: { rememberMe?: boolean } = {},
 ) {
+  await connection();
   const rememberMe = Boolean(options.rememberMe);
   const durationSeconds = rememberMe
     ? REMEMBER_ME_DURATION_SECONDS
@@ -99,7 +106,15 @@ export async function getLocalSession(): Promise<LocalSession | null> {
     const parsed: unknown = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
     );
-    return isLocalSession(parsed) ? parsed : null;
+    if (!isLocalSessionShape(parsed)) return null;
+
+    // Page e layout podem renderizar em paralelo; `connection()` garante
+    // request-time antes de Date.now() (Cache Components / Partial Prefetch).
+    await connection();
+    if (!isSessionUnexpired(parsed, Math.floor(Date.now() / 1000))) {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }

@@ -32,6 +32,7 @@ import {
 } from "@/hooks/use-chat-messages";
 import { useAnalystLobbyPresence } from "@/hooks/use-analyst-lobby-presence";
 import { useOnlinePresence } from "@/hooks/use-online-presence";
+import { useQueueTypingMap } from "@/hooks/use-queue-typing-map";
 
 export type AnalystWorkingAction =
   | AnalystConversationLifecycleAction
@@ -62,6 +63,7 @@ export function useAnalystConsole({
   const [conversationFilter, setConversationFilter] =
     useState<ConversationFilter>("all");
   const [now, setNow] = useState(() => Date.now());
+  const [openChatUnseen, setOpenChatUnseen] = useState(0);
 
   useAnalystLobbyPresence({
     analystId: currentAnalystId,
@@ -101,19 +103,33 @@ export function useAnalystConsole({
     }, [refreshQueue]),
   );
 
+  const conversationsForQueue = useMemo(
+    () =>
+      conversations.map((conversation) =>
+        conversation.id === selectedId && openChatUnseen > 0
+          ? {
+              ...conversation,
+              unread: Math.max(conversation.unread, openChatUnseen),
+            }
+          : conversation,
+      ),
+    [conversations, openChatUnseen, selectedId],
+  );
+
   const filteredConversations = useMemo(
     () =>
       filterAnalystConversations({
-        conversations,
+        conversations: conversationsForQueue,
         search,
         conversationFilter,
         currentAnalystId,
       }),
-    [conversations, conversationFilter, currentAnalystId, search],
+    [conversationsForQueue, conversationFilter, currentAnalystId, search],
   );
 
   const selectConversation = useCallback(async (conversationId: string) => {
     setSelectedId(conversationId);
+    setOpenChatUnseen(0);
     setConversationError("");
     try {
       const conversation = mapConversation(
@@ -160,6 +176,19 @@ export function useAnalystConsole({
     },
   });
 
+  const typingSessionIds = useMemo(
+    () => filteredConversations.map((conversation) => conversation.id),
+    [filteredConversations],
+  );
+  const queueTypingBySessionId = useQueueTypingMap(
+    typingSessionIds,
+    selectedId,
+  );
+  const typingBySessionId = useMemo(() => {
+    if (!selectedId || !presence.peerIsTyping) return queueTypingBySessionId;
+    return { ...queueTypingBySessionId, [selectedId]: true };
+  }, [queueTypingBySessionId, presence.peerIsTyping, selectedId]);
+
   const employeeIsOnline = Boolean(
     selectedConversation &&
       presence.onlineUsers.some(
@@ -168,6 +197,12 @@ export function useAnalystConsole({
           user.id === selectedConversation.employeeUserId,
       ),
   );
+
+
+  useEffect(() => {
+    if (!isWorking) return;
+    presence.stopTyping();
+  }, [isWorking, presence.stopTyping]);
 
   const conversationActionHandlers: Record<
     ConversationAction,
@@ -249,16 +284,17 @@ export function useAnalystConsole({
     }
   }
 
-  const waitingCount = conversations.filter(
+  const waitingCount = conversationsForQueue.filter(
     (conversation) => conversation.status === "Aguardando",
   ).length;
-  const conversationsWithUnread = conversations.filter(
+  const conversationsWithUnread = conversationsForQueue.filter(
     (conversation) => conversation.unread > 0,
   ).length;
 
   return {
-    conversations,
+    conversations: conversationsForQueue,
     filteredConversations,
+    setOpenChatUnseen,
     selectedId,
     selectedConversation,
     search,
@@ -272,10 +308,17 @@ export function useAnalystConsole({
     setConversationFilter,
     now,
     employeeIsOnline,
+    peerIsTyping: presence.peerIsTyping,
+    notifyTyping: presence.notifyTyping,
+    stopTyping: presence.stopTyping,
+    typingBySessionId,
     waitingCount,
     conversationsWithUnread,
     selectConversation,
-    clearSelection: () => setSelectedId(null),
+    clearSelection: () => {
+      setSelectedId(null);
+      setOpenChatUnseen(0);
+    },
     performConversationAction,
     sendMessage,
     handleTicketStatusChange,

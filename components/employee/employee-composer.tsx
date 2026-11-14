@@ -23,6 +23,7 @@ export function EmployeeComposer({
   onSubmit,
   onRequestAnalyst,
   onEndConversation,
+  onTypingActivity,
 }: {
   message: string;
   conversationError: string;
@@ -38,6 +39,7 @@ export function EmployeeComposer({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRequestAnalyst: () => void;
   onEndConversation?: () => void;
+  onTypingActivity?: () => void;
 }) {
   const statusUi = getEmployeeStatusUi(conversationStatus);
   const composerLocked =
@@ -63,7 +65,7 @@ export function EmployeeComposer({
     : statusUi.placeholder;
 
   return (
-    <div className="shrink-0 bg-transparent px-2 pt-2 pb-5 md:px-44 sm:px-12">
+    <div className="shrink-0 bg-transparent px-2 pt-2 pb-5 sm:px-12 lg:px-44">
       {limitBanner ? (
         <div
           role="status"
@@ -128,7 +130,10 @@ export function EmployeeComposer({
         <Input
           id="message"
           value={message}
-          onChange={(event) => onMessageChange(event.target.value)}
+          onChange={(event) => {
+            onMessageChange(event.target.value);
+            if (event.target.value.trim()) onTypingActivity?.();
+          }}
           disabled={composerLocked}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {

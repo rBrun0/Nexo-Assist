@@ -345,22 +345,13 @@ export function useEmployeeConversation({
   }, [enabled, loadConversation]);
 
   useEffect(() => {
-    if (!enabled) return;
-    messagesEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [
-    enabled,
-    messages.length,
-    streamedResponseText,
-    agentActivitySteps.length,
-    isSendingMessage,
-  ]);
-
-  useEffect(() => {
     return () => clearStreamTimeout();
   }, [clearStreamTimeout]);
+
+  useEffect(() => {
+    if (!isSendingMessage) return;
+    presence.stopTyping();
+  }, [isSendingMessage, presence.stopTyping]);
 
   async function submitMessage(text: string, ticketIdOverride?: string) {
     const trimmedMessage = text.trim();
@@ -662,6 +653,9 @@ export function useEmployeeConversation({
     streamedResponseText,
     statusBadge,
     onlineUsers: presence.onlineUsers,
+    peerIsTyping: presence.peerIsTyping,
+    notifyTyping: presence.notifyTyping,
+    stopTyping: presence.stopTyping,
     messagesEndRef,
     lastInteractiveAssistantMessageId,
     submitMessage,

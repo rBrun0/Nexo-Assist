@@ -64,7 +64,7 @@ export function ChatMessageFrame({
             {inlineHeader ? (
               <div
                 className={cn(
-                  "relative -mb-0.5 min-h-5",
+                  "relative mb-1.5 min-h-5 sm:mb-1",
                   senderLabel && "pr-[7.5rem]",
                 )}
               >
@@ -87,7 +87,7 @@ export function ChatMessageFrame({
                 ) : null}
               </div>
             ) : labelStartHeader ? (
-              <div className="-mb-0.5 flex min-w-0 items-center gap-3 leading-5">
+              <div className="mb-1.5 flex min-w-0 items-center gap-2 sm:mb-1 sm:gap-3 leading-5">
                 {senderLabel ? (
                   <p
                     className={cn(
@@ -112,13 +112,13 @@ export function ChatMessageFrame({
                   <ThoughtProcessBlock
                     thoughtProcess={thoughtProcess}
                     messageId={messageId}
-                    className="-mb-0.5"
+                    className="mb-1.5 sm:mb-1"
                   />
                 ) : null}
                 {senderLabel ? (
                   <div
                     className={cn(
-                      "-mb-0.5 flex items-center gap-1",
+                      "mb-1.5 flex items-center gap-1 sm:mb-1",
                       alignEnd && "justify-end",
                     )}
                   >

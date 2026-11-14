@@ -27,6 +27,7 @@ export function AnalystChatFooter({
   onDraftChange,
   onPerformAction,
   onSendMessage,
+  onTypingActivity,
 }: {
   conversation: AnalystConversationListItem;
   firstName: string;
@@ -38,6 +39,7 @@ export function AnalystChatFooter({
   onDraftChange: (value: string) => void;
   onPerformAction: (action: "claim" | "return_to_bot" | "close") => void;
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
+  onTypingActivity?: () => void;
 }) {
   const footerUi = getAnalystFooterUi({
     status: conversation.status,
@@ -130,7 +132,10 @@ export function AnalystChatFooter({
         <Input
           id="analyst-message"
           value={draft}
-          onChange={(event) => onDraftChange(event.target.value)}
+          onChange={(event) => {
+            onDraftChange(event.target.value);
+            if (event.target.value.trim()) onTypingActivity?.();
+          }}
           disabled={isWorking || !footerUi.canCompose}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
