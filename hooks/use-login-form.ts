@@ -1,56 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 
 import { login } from "@/lib/api/auth";
-import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-
-const REMEMBER_ME_STORAGE_KEY = "nexo_remember_me";
-
-function readRememberMePreference() {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(REMEMBER_ME_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function writeRememberMePreference(value: boolean) {
-  try {
-    window.localStorage.setItem(
-      REMEMBER_ME_STORAGE_KEY,
-      value ? "true" : "false",
-    );
-  } catch {
-    // Preferência local é best-effort; falha de storage não bloqueia o login.
-  }
-}
+import {
+  readRememberMePreference,
+  writeRememberMePreference,
+} from "@/lib/auth/remember-me";
+import { useLoginFields } from "@/lib/forms/use-login-fields";
+import type { LoginInput } from "@/lib/validations/auth";
 
 export function useLoginForm() {
   const router = useRouter();
   const [formMessage, setFormMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [rememberMe, setRememberMeState] = useState(false);
-  const form = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      rememberMe: false,
-    },
-  });
-
-  useEffect(() => {
-    const preferred = readRememberMePreference();
-    setRememberMeState(preferred);
-    form.setValue("rememberMe", preferred);
-    // Preferência local só no mount; o checkbox controla o restante.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setValue estável o bastante no mount
-  }, []);
+  const [rememberMe, setRememberMeState] = useState(() =>
+    readRememberMePreference(),
+  );
+  const form = useLoginFields({ rememberMe });
 
   function setRememberMe(value: boolean) {
     setRememberMeState(value);
@@ -63,22 +31,19 @@ export function useLoginForm() {
     setIsSubmitting(true);
     writeRememberMePreference(values.rememberMe);
 
-    try {
-      const user = await login(values);
-      router.replace(
-        user.role === "ANALYST" ? "/analyst" : "/employee/atendimento",
-      );
-      router.refresh();
-    } catch (error) {
-      console.error("Falha na requisição de login:", error);
-      setFormMessage(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível iniciar a sessão.",
-      );
-    } finally {
+    const result = await login(values);
+    if (!result.success) {
+      console.error("Falha na requisição de login:", result.error);
+      setFormMessage(result.error.message);
       setIsSubmitting(false);
+      return;
     }
+
+    router.replace(
+      result.data.role === "ANALYST" ? "/analyst" : "/employee/atendimento",
+    );
+    router.refresh();
+    setIsSubmitting(false);
   }
 
   return {

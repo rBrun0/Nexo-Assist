@@ -235,12 +235,18 @@ export function useEmployeeConversation({
   );
 
   const loadConversation = useCallback(async () => {
-    const [nextConversation, nextTickets] = await Promise.all([
+    const [conversationResult, ticketsResult] = await Promise.all([
       getMyConversation(),
       listMyTickets(),
     ]);
-    syncConversationMessages(nextConversation);
-    setTickets(nextTickets);
+    if (!conversationResult.success) {
+      throw new Error(conversationResult.error.message);
+    }
+    if (!ticketsResult.success) {
+      throw new Error(ticketsResult.error.message);
+    }
+    syncConversationMessages(conversationResult.data);
+    setTickets(ticketsResult.data);
     setIsLoadingConversation(false);
     optimisticMessageIdRef.current = null;
     setPendingLocalMessage(null);
@@ -513,35 +519,26 @@ export function useEmployeeConversation({
 
   async function confirmTicketDraft(draftMessageId: string) {
     setConversationError("");
-    try {
-      const nextConversation =
-        await confirmTicketDraftRequest(draftMessageId);
-      syncConversationMessages(nextConversation);
-      await loadConversation();
-    } catch (error) {
-      console.error("Falha ao confirmar rascunho de chamado:", error);
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível confirmar o chamado.",
-      );
+    const result = await confirmTicketDraftRequest(draftMessageId);
+    if (!result.success) {
+      console.error("Falha ao confirmar rascunho de chamado:", result.error);
+      setConversationError(result.error.message);
+      return;
     }
+    syncConversationMessages(result.data);
+    await loadConversation();
   }
 
   async function cancelTicketDraftAction(draftMessageId: string) {
     setConversationError("");
-    try {
-      const nextConversation = await cancelTicketDraft(draftMessageId);
-      syncConversationMessages(nextConversation);
-      await loadConversation();
-    } catch (error) {
-      console.error("Falha ao cancelar rascunho de chamado:", error);
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível cancelar o rascunho.",
-      );
+    const result = await cancelTicketDraft(draftMessageId);
+    if (!result.success) {
+      console.error("Falha ao cancelar rascunho de chamado:", result.error);
+      setConversationError(result.error.message);
+      return;
     }
+    syncConversationMessages(result.data);
+    await loadConversation();
   }
 
   const lastInteractiveAssistantMessageId = useMemo(() => {
@@ -586,49 +583,41 @@ export function useEmployeeConversation({
     if (isEndingConversation || conversation?.status !== "BOT_ACTIVE") return;
     setIsEndingConversation(true);
     setConversationError("");
-    try {
-      await endConversation();
-      setEndedNotice(true);
-      setStreamedMessages([]);
-      streamStartedAtRef.current = null;
-      setPendingLocalMessage(null);
-      optimisticMessageIdRef.current = null;
-      await loadConversation();
-    } catch (error) {
-      console.error("Falha ao encerrar a conversa:", error);
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível encerrar a conversa.",
-      );
-    } finally {
+    const result = await endConversation();
+    if (!result.success) {
+      console.error("Falha ao encerrar a conversa:", result.error);
+      setConversationError(result.error.message);
       setIsEndingConversation(false);
+      return;
     }
+    setEndedNotice(true);
+    setStreamedMessages([]);
+    streamStartedAtRef.current = null;
+    setPendingLocalMessage(null);
+    optimisticMessageIdRef.current = null;
+    await loadConversation();
+    setIsEndingConversation(false);
   }
 
   async function requestAnalystFromLimit() {
     if (isRequestingAnalyst || conversation?.status !== "BOT_ACTIVE") return;
     setIsRequestingAnalyst(true);
     setConversationError("");
-    try {
-      const nextConversation = await requestAnalyst(
-        "Funcionário solicitou analista após atingir o limite de 30 mensagens.",
-      );
-      syncConversationMessages(nextConversation);
-      await chatHistory.refetch();
-    } catch (error) {
+    const result = await requestAnalyst(
+      "Funcionário solicitou analista após atingir o limite de 30 mensagens.",
+    );
+    if (!result.success) {
       console.error(
         "Falha ao solicitar analista no limite da conversa:",
-        error,
+        result.error,
       );
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível solicitar um analista.",
-      );
-    } finally {
+      setConversationError(result.error.message);
       setIsRequestingAnalyst(false);
+      return;
     }
+    syncConversationMessages(result.data);
+    await chatHistory.refetch();
+    setIsRequestingAnalyst(false);
   }
 
   return {

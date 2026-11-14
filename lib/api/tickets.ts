@@ -1,17 +1,26 @@
+import { AppErrors, ok, type Result } from "@/lib/errors";
 import { getJson, patchJson } from "@/lib/api/http";
 import type { EmployeeTicket } from "@/lib/types/employee-conversation";
 
-export async function listMyTickets() {
+export async function listMyTickets(): Promise<Result<EmployeeTicket[]>> {
   const result = await getJson<{ tickets: EmployeeTicket[] }>("/api/tickets", {
-    fallbackError: "Não foi possível carregar os chamados.",
+    fallbackError: AppErrors.loadTicketsFailed,
   });
-  return result.tickets ?? [];
+
+  if (!result.success) {
+    return result;
+  }
+
+  return ok(result.data.tickets ?? []);
 }
 
-export async function updateTicketStatus(ticketId: string, status: string) {
-  await patchJson(
+export async function updateTicketStatus(
+  ticketId: string,
+  status: string,
+): Promise<Result<unknown>> {
+  return patchJson(
     `/api/tickets/${ticketId}`,
     { status },
-    { fallbackError: "Não foi possível atualizar o chamado." },
+    { fallbackError: AppErrors.updateTicketFailed },
   );
 }

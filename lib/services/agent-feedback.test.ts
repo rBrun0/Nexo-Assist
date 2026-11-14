@@ -12,11 +12,9 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+import { HttpStatus } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
-import {
-  AgentFeedbackError,
-  submitAgentFeedback,
-} from "@/lib/services/agent-feedback";
+import { submitAgentFeedback } from "@/lib/services/agent-feedback";
 
 function resolveMock(mock: unknown, value: unknown) {
   (
@@ -47,7 +45,10 @@ describe("submitAgentFeedback", () => {
         role: Role.EMPLOYEE,
         messageId: "11111111-1111-4111-8111-111111111111",
       }),
-    ).rejects.toBeInstanceOf(AgentFeedbackError);
+    ).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.FORBIDDEN },
+    });
   });
 
   it("permite analista e persiste o feedback", async () => {
@@ -81,6 +82,9 @@ describe("submitAgentFeedback", () => {
         }),
       }),
     );
-    expect(result.id).toBe("feedback-1");
+    expect(result).toMatchObject({
+      success: true,
+      data: { id: "feedback-1" },
+    });
   });
 });

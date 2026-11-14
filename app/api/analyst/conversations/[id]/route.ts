@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
 import { unstable_rethrow } from "next/navigation";
+import { NextResponse } from "next/server";
 
-import { AuthSessionError, requireUser } from "@/lib/auth/session";
+import { requireUser } from "@/lib/auth/session";
+import { AppErrors, jsonError } from "@/lib/errors";
 import {
-  ConversationError,
   getAnalystConversation,
   markConversationReadByAnalyst,
   performAnalystConversationAction,
@@ -14,11 +14,15 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: RouteContext) {
   try {
-    const user = await requireUser("ANALYST");
+    const userResult = await requireUser("ANALYST");
+    if (!userResult.success) {
+      return jsonError(userResult.error);
+    }
+    const user = userResult.data;
     const { id } = await params;
     const conversation = await getAnalystConversation(id);
     if (!conversation) {
-      return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
+      return jsonError(AppErrors.conversationNotFound);
     }
 
     await markConversationReadByAnalyst(id, user.id);
@@ -27,14 +31,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
     });
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof AuthSessionError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode }
-      );
-    }
     console.error("Falha ao carregar conversa do analista:", error);
-    return NextResponse.json({ error: "Não foi possível carregar a conversa." }, { status: 500 });
+    return jsonError(AppErrors.loadConversationFailed);
   }
 }
 
@@ -43,32 +41,32 @@ export async function POST(request: Request, { params }: RouteContext) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Corpo da requisição inválido." }, { status: 400 });
+    return jsonError(AppErrors.invalidRequestBody);
   }
 
   try {
-    const user = await requireUser("ANALYST");
+    const userResult = await requireUser("ANALYST");
+    if (!userResult.success) {
+      return jsonError(userResult.error);
+    }
     const parsed = analystConversationActionSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Ação inválida." }, { status: 400 });
+      return jsonError(AppErrors.invalidAction);
     }
 
     const { id } = await params;
-    const result = await performAnalystConversationAction(user.id, id, parsed.data);
-    return NextResponse.json(result);
+    const result = await performAnalystConversationAction(
+      userResult.data.id,
+      id,
+      parsed.data,
+    );
+    if (!result.success) {
+      return jsonError(result.error);
+    }
+    return NextResponse.json(result.data);
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof AuthSessionError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode }
-      );
-    }
-    if (error instanceof ConversationError) {
-      return NextResponse.json({ error: error.message }, { status: error.statusCode });
-    }
-
     console.error("Falha ao executar ação do analista:", error);
-    return NextResponse.json({ error: "Não foi possível atualizar a conversa." }, { status: 500 });
+    return jsonError(AppErrors.updateConversationFailed);
   }
 }

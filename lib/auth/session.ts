@@ -2,6 +2,7 @@ import "server-only";
 
 import type { Role } from "@prisma/client";
 
+import { AppErrors, DomainError, fromDomain, type Result } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { getLocalSession } from "@/lib/auth/local-session";
 
@@ -19,28 +20,19 @@ export async function getCurrentUser() {
 
 export type AppUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;
 
-export async function requireUser(role?: Role): Promise<AppUser> {
-  const user = await getCurrentUser();
-  if (!user) {
-    throw new AuthSessionError("Sessão necessária.", 401);
-  }
-  if (role && user.role !== role) {
-    throw new AuthSessionError(
-      role === "ANALYST"
-        ? "Sessão de analista necessária."
-        : "Sessão de funcionário necessária.",
-      401
-    );
-  }
-  return user;
-}
-
-export class AuthSessionError extends Error {
-  constructor(
-    message: string,
-    readonly statusCode: 401 | 403 = 401
-  ) {
-    super(message);
-    this.name = "AuthSessionError";
-  }
+export async function requireUser(role?: Role): Promise<Result<AppUser>> {
+  return fromDomain(async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      throw new DomainError(AppErrors.sessionRequired);
+    }
+    if (role && user.role !== role) {
+      throw new DomainError(
+        role === "ANALYST"
+          ? AppErrors.analystSessionRequired
+          : AppErrors.employeeSessionRequired,
+      );
+    }
+    return user;
+  });
 }

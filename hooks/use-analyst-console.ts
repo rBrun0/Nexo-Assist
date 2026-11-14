@@ -76,7 +76,11 @@ export function useAnalystConsole({
   }, []);
 
   const refreshQueue = useCallback(async () => {
-    const next = (await listAnalystConversations()).map(mapConversation);
+    const result = await listAnalystConversations();
+    if (!result.success) {
+      throw new Error(result.error.message);
+    }
+    const next = result.data.map(mapConversation);
     setConversations((current) => {
       const retained = current.find(
         (conversation) =>
@@ -131,22 +135,17 @@ export function useAnalystConsole({
     setSelectedId(conversationId);
     setOpenChatUnseen(0);
     setConversationError("");
-    try {
-      const conversation = mapConversation(
-        await getAnalystConversation(conversationId),
-      );
-      setConversations((current) => [
-        conversation,
-        ...current.filter((item) => item.id !== conversationId),
-      ]);
-    } catch (error) {
-      console.error("Falha ao abrir conversa para o analista:", error);
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível abrir a conversa.",
-      );
+    const result = await getAnalystConversation(conversationId);
+    if (!result.success) {
+      console.error("Falha ao abrir conversa para o analista:", result.error);
+      setConversationError(result.error.message);
+      return;
     }
+    const conversation = mapConversation(result.data);
+    setConversations((current) => [
+      conversation,
+      ...current.filter((item) => item.id !== conversationId),
+    ]);
   }, []);
 
   const selectedHistory = useChatMessages(selectedId, [], {
@@ -218,13 +217,31 @@ export function useAnalystConsole({
       }
     },
     claim: async (conversation) => {
-      await postAnalystConversationAction(conversation.id, "claim");
+      const result = await postAnalystConversationAction(
+        conversation.id,
+        "claim",
+      );
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
     },
     return_to_bot: async (conversation) => {
-      await postAnalystConversationAction(conversation.id, "return_to_bot");
+      const result = await postAnalystConversationAction(
+        conversation.id,
+        "return_to_bot",
+      );
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
     },
     close: async (conversation) => {
-      await postAnalystConversationAction(conversation.id, "close");
+      const result = await postAnalystConversationAction(
+        conversation.id,
+        "close",
+      );
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
     },
   };
 
@@ -267,21 +284,16 @@ export function useAnalystConsole({
 
   async function handleTicketStatusChange(ticketId: string, status: string) {
     if (!selectedConversation) return;
-    try {
-      await updateTicketStatus(ticketId, status);
-      setConversationError("");
-      await Promise.all([
-        refreshQueue(),
-        selectConversation(selectedConversation.id),
-      ]);
-    } catch (error) {
-      setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível atualizar o chamado.",
-      );
-      throw error;
+    const result = await updateTicketStatus(ticketId, status);
+    if (!result.success) {
+      setConversationError(result.error.message);
+      throw new Error(result.error.message);
     }
+    setConversationError("");
+    await Promise.all([
+      refreshQueue(),
+      selectConversation(selectedConversation.id),
+    ]);
   }
 
   const waitingCount = conversationsForQueue.filter(

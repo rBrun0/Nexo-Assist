@@ -22,6 +22,9 @@ export const addTicketCommentTool = createTool({
       ticketCode,
       message,
     );
-    return { success: true as const, ticketCode: comment.ticketCode };
+    if (!comment.success) {
+      throw new Error(comment.error.message);
+    }
+    return { success: true as const, ticketCode: comment.data.ticketCode };
   },
 });

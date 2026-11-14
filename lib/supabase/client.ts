@@ -16,7 +16,6 @@ export function getSupabaseBrowserEnv() {
   return { supabaseUrl, supabaseAnonKey };
 }
 
-/** Cliente browser singleton. Retorna null se as envs públicas não estiverem configuradas. */
 export function getSupabaseBrowserClient() {
   const env = getSupabaseBrowserEnv();
   if (!env) return null;
@@ -28,7 +27,7 @@ export function getSupabaseBrowserClient() {
   return browserClient;
 }
 
-/** @deprecated Preferir `getSupabaseBrowserClient`. */
+/** @deprecated Rather use `getSupabaseBrowserClient`. */
 export function createSupabaseBrowserClient() {
   const client = getSupabaseBrowserClient();
   if (!client) {

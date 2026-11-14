@@ -90,6 +90,26 @@ function trackPayloadFromHub(hub: PresenceHub) {
   return null;
 }
 
+function trackHub(
+  hub: PresenceHub,
+  channelName: string,
+  actionLabel: string,
+) {
+  const payload = trackPayloadFromHub(hub);
+  if (!payload) return;
+  void hub.channel.track(payload).catch((error: unknown) => {
+    console.error(`Falha ao ${actionLabel} (${hub.logLabel}):`, {
+      channelName,
+      error,
+    });
+  });
+}
+
+function emitIfCurrent(channelName: string, channel: RealtimeChannel) {
+  const current = hubs.get(channelName);
+  if (current?.channel === channel) emitHub(current);
+}
+
 function bindPresenceChannel({
   channelName,
   presenceKey,
@@ -131,14 +151,8 @@ function bindPresenceChannel({
   hub.consumers.add(consumer);
 
   if (hub.subscribed) {
-    const payload = trackPayloadFromHub(hub);
-    if (payload && trackUser) {
-      void hub.channel.track(payload).catch((error: unknown) => {
-        console.error(`Falha ao publicar presença (${logLabel}):`, {
-          channelName,
-          error,
-        });
-      });
+    if (trackUser) {
+      trackHub(hub, channelName, "publicar presença");
     }
     emitHub(hub);
   }
@@ -150,15 +164,7 @@ function bindPresenceChannel({
       if (!current) return;
       current.consumers.delete(consumer);
       if (current.consumers.size > 0) {
-        const payload = trackPayloadFromHub(current);
-        if (payload) {
-          void current.channel.track(payload).catch((error: unknown) => {
-            console.error(`Falha ao atualizar typing (${logLabel}):`, {
-              channelName,
-              error,
-            });
-          });
-        }
+        trackHub(current, channelName, "atualizar typing");
         return;
       }
 
@@ -177,14 +183,7 @@ function bindPresenceChannel({
       consumer.typing = nextTyping;
       const current = hubs.get(channelName);
       if (!current?.subscribed) return;
-      const payload = trackPayloadFromHub(current);
-      if (!payload) return;
-      void current.channel.track(payload).catch((error: unknown) => {
-        console.error(`Falha ao atualizar typing (${logLabel}):`, {
-          channelName,
-          error,
-        });
-      });
+      trackHub(current, channelName, "atualizar typing");
     },
   };
 }
@@ -215,33 +214,20 @@ function createHub({
 
   channel
     .on("presence", { event: "sync" }, () => {
-      const current = hubs.get(channelName);
-      if (current?.channel === channel) emitHub(current);
+      emitIfCurrent(channelName, channel);
     })
     .on("presence", { event: "join" }, () => {
-      const current = hubs.get(channelName);
-      if (current?.channel === channel) emitHub(current);
+      emitIfCurrent(channelName, channel);
     })
     .on("presence", { event: "leave" }, () => {
-      const current = hubs.get(channelName);
-      if (current?.channel === channel) emitHub(current);
+      emitIfCurrent(channelName, channel);
     })
-    .subscribe(async (status) => {
+    .subscribe((status) => {
       if (status !== "SUBSCRIBED") return;
       const current = hubs.get(channelName);
       if (!current || current.channel !== channel) return;
       current.subscribed = true;
-      const payload = trackPayloadFromHub(current);
-      if (payload) {
-        try {
-          await channel.track(payload);
-        } catch (error) {
-          console.error(`Falha ao publicar presença (${logLabel}):`, {
-            channelName,
-            error,
-          });
-        }
-      }
+      trackHub(current, channelName, "publicar presença");
       emitHub(current);
     });
 

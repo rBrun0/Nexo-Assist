@@ -1,4 +1,5 @@
-import { ApiRequestError, postJson } from "@/lib/api/http";
+import { AppErrors, err, ok, type Result } from "@/lib/errors";
+import { postJson } from "@/lib/api/http";
 import type { LoginInput, UpdatePasswordInput } from "@/lib/validations/auth";
 
 export type AuthUserSummary = {
@@ -11,26 +12,34 @@ type LoginResponse = {
   user: AuthUserSummary;
 };
 
-export async function login(input: LoginInput) {
+export async function login(
+  input: LoginInput,
+): Promise<Result<AuthUserSummary>> {
   const result = await postJson<LoginResponse>("/api/auth/login", input, {
-    fallbackError: "Não foi possível iniciar a sessão.",
+    fallbackError: AppErrors.loginFailed,
   });
 
-  if (!result?.user?.role) {
-    throw new ApiRequestError("Não foi possível iniciar a sessão.", 500);
+  if (!result.success) {
+    return result;
   }
 
-  return result.user;
+  if (!result.data?.user?.role) {
+    return err(AppErrors.loginFailed);
+  }
+
+  return ok(result.data.user);
 }
 
-export async function logout() {
-  await postJson<{ success: true }>("/api/auth/logout", undefined, {
-    fallbackError: "A sessão não pôde ser encerrada.",
+export async function logout(): Promise<Result<{ success: true }>> {
+  return postJson<{ success: true }>("/api/auth/logout", undefined, {
+    fallbackError: AppErrors.logoutFailedClient,
   });
 }
 
-export async function updatePassword(input: UpdatePasswordInput) {
-  await postJson<{ success: true }>("/api/auth/password", input, {
-    fallbackError: "Não foi possível atualizar a senha.",
+export async function updatePassword(
+  input: UpdatePasswordInput,
+): Promise<Result<{ success: true }>> {
+  return postJson<{ success: true }>("/api/auth/password", input, {
+    fallbackError: AppErrors.passwordUpdateFailed,
   });
 }

@@ -1,4 +1,5 @@
-import { ApiRequestError, getJson, postJson } from "@/lib/api/http";
+import { AppErrors, err, ok, type Result } from "@/lib/errors";
+import { getJson, postJson } from "@/lib/api/http";
 import type { AnalystConversationView } from "@/lib/types/conversation";
 
 export type AnalystConversationLifecycleAction =
@@ -6,39 +7,51 @@ export type AnalystConversationLifecycleAction =
   | "return_to_bot"
   | "close";
 
-export async function listAnalystConversations() {
+export async function listAnalystConversations(): Promise<
+  Result<AnalystConversationView[]>
+> {
   const result = await getJson<{ conversations: AnalystConversationView[] }>(
     "/api/analyst/conversations",
-    { fallbackError: "Não foi possível atualizar a fila." },
+    { fallbackError: AppErrors.refreshQueueFailed },
   );
 
-  if (!result?.conversations) {
-    throw new ApiRequestError("Não foi possível atualizar a fila.", 500);
+  if (!result.success) {
+    return result;
   }
 
-  return result.conversations;
+  if (!result.data?.conversations) {
+    return err(AppErrors.refreshQueueFailed);
+  }
+
+  return ok(result.data.conversations);
 }
 
-export async function getAnalystConversation(conversationId: string) {
+export async function getAnalystConversation(
+  conversationId: string,
+): Promise<Result<AnalystConversationView>> {
   const result = await getJson<{ conversation: AnalystConversationView }>(
     `/api/analyst/conversations/${conversationId}`,
-    { fallbackError: "Não foi possível abrir a conversa." },
+    { fallbackError: AppErrors.openConversationFailed },
   );
 
-  if (!result?.conversation) {
-    throw new ApiRequestError("Não foi possível abrir a conversa.", 500);
+  if (!result.success) {
+    return result;
   }
 
-  return result.conversation;
+  if (!result.data?.conversation) {
+    return err(AppErrors.openConversationFailed);
+  }
+
+  return ok(result.data.conversation);
 }
 
 export async function postAnalystConversationAction(
   conversationId: string,
   action: AnalystConversationLifecycleAction,
-) {
-  await postJson(
+): Promise<Result<unknown>> {
+  return postJson(
     `/api/analyst/conversations/${conversationId}`,
     { action },
-    { fallbackError: "Não foi possível atualizar a conversa." },
+    { fallbackError: AppErrors.updateConversationFailed },
   );
 }

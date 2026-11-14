@@ -27,11 +27,11 @@ jest.mock("@/lib/services/ticket-sla", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
+import { AppErrors } from "@/lib/errors";
 import {
   createTicketCommentForUser,
   createTicketForUser,
   listTicketsForUser,
-  TicketInputError,
   transferTicketToAnalyst,
   updateTicketStatusForAnalyst,
 } from "./tickets";
@@ -206,14 +206,20 @@ describe("updateTicketStatusForAnalyst", () => {
 
     await expect(
       updateTicketStatusForAnalyst("ticket-1", TicketStatus.IN_PROGRESS),
-    ).resolves.toMatchObject({ status: TicketStatus.IN_PROGRESS });
+    ).resolves.toMatchObject({
+      success: true,
+      data: expect.objectContaining({ status: TicketStatus.IN_PROGRESS }),
+    });
   });
 
   it("rejeita chamado inexistente", async () => {
     resolveMock(prisma.ticket.findUnique, null);
     await expect(
       updateTicketStatusForAnalyst("missing", TicketStatus.RESOLVED),
-    ).rejects.toBeInstanceOf(TicketInputError);
+    ).resolves.toMatchObject({
+      success: false,
+      error: { message: AppErrors.ticketNotFound.message },
+    });
   });
 });
 
@@ -223,15 +229,18 @@ describe("createTicketCommentForUser", () => {
     resolveMock(prisma.ticketComment.create, { id: "comment-1" });
 
     await expect(
-      createTicketCommentForUser(userId, "carlos@nexo.com", "INC-1", "Detalhe extra")
-    ).resolves.toEqual({ ticketCode: "INC-1" });
+      createTicketCommentForUser(userId, "carlos@nexo.com", "INC-1", "Detalhe extra"),
+    ).resolves.toEqual({ success: true, data: { ticketCode: "INC-1" } });
   });
 
   it("rejeita comentário em ticket de terceiros", async () => {
     resolveMock(prisma.ticket.findFirst, null);
     await expect(
-      createTicketCommentForUser(userId, "carlos@nexo.com", "INC-X", "oi")
-    ).rejects.toBeInstanceOf(TicketInputError);
+      createTicketCommentForUser(userId, "carlos@nexo.com", "INC-X", "oi"),
+    ).resolves.toMatchObject({
+      success: false,
+      error: { message: AppErrors.ticketNotFoundInAccount.message },
+    });
   });
 });
 

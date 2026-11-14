@@ -3,7 +3,6 @@ import { ChatStatus, MessageSender, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createTicketForUser } from "@/lib/services/tickets";
 import {
-  ConversationError,
   createEmployeeMessage,
   cancelTicketDraft,
   createTicketFromDraft,
@@ -17,6 +16,7 @@ import {
   sendManualConversationMessage,
   listAnalystConversations,
 } from "./conversations";
+import { AppErrors, DomainError, HttpStatus } from "@/lib/errors";
 
 jest.mock("server-only", () => ({}));
 jest.mock("@/lib/prisma", () => ({
@@ -137,13 +137,15 @@ describe("getChatHistoryForUser", () => {
       },
     ]);
 
-    const messages = await getChatHistoryForUser(
+    const messagesResult = await getChatHistoryForUser(
       employeeId,
       Role.EMPLOYEE,
       sessionId,
     );
 
-    expect(messages[0].createdAt).toBe("2026-11-07T12:00:00.000Z");
+    expect(messagesResult.success).toBe(true);
+    if (!messagesResult.success) return;
+    expect(messagesResult.data[0].createdAt).toBe("2026-11-07T12:00:00.000Z");
     expect(prisma.chatSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: sessionId, userId: employeeId },
@@ -165,7 +167,10 @@ describe("getChatHistoryForUser", () => {
 
     await expect(
       getChatHistoryForUser(employeeId, Role.EMPLOYEE, sessionId),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.NOT_FOUND },
+    });
     expect(prisma.chatMessage.findMany).not.toHaveBeenCalled();
   });
 
@@ -176,7 +181,7 @@ describe("getChatHistoryForUser", () => {
 
     await expect(
       getChatHistoryForUser(analystId, Role.ANALYST, sessionId),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ success: true, data: [] });
     expect(prisma.chatSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: sessionId } }),
     );
@@ -284,7 +289,8 @@ describe("endEmployeeConversation", () => {
     resolveMock(prisma.chatMessage.create, { id: "system-close" });
 
     await expect(endEmployeeConversation(employeeId)).resolves.toEqual({
-      status: ChatStatus.CLOSED,
+      success: true,
+      data: { status: ChatStatus.CLOSED },
     });
     expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -313,8 +319,9 @@ describe("endEmployeeConversation", () => {
       status: ChatStatus.HUMAN_ACTIVE,
     });
 
-    await expect(endEmployeeConversation(employeeId)).rejects.toMatchObject({
-      statusCode: 403,
+    await expect(endEmployeeConversation(employeeId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.FORBIDDEN },
     });
     expect(prisma.chatSession.updateMany).not.toHaveBeenCalled();
   });
@@ -326,8 +333,9 @@ describe("endEmployeeConversation", () => {
       status: ChatStatus.WAITING_HUMAN,
     });
 
-    await expect(endEmployeeConversation(employeeId)).rejects.toMatchObject({
-      statusCode: 409,
+    await expect(endEmployeeConversation(employeeId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
     });
   });
 });
@@ -408,9 +416,12 @@ describe("createEmployeeMessage", () => {
     await expect(
       createEmployeeMessage(employeeId, "Meu notebook está lento."),
     ).resolves.toMatchObject({
-      session,
-      shouldRunAgent: true,
-      message: { sender: MessageSender.EMPLOYEE },
+      success: true,
+      data: expect.objectContaining({
+        session,
+        shouldRunAgent: true,
+        message: expect.objectContaining({ sender: MessageSender.EMPLOYEE }),
+      }),
     });
     expect(transactionMock.chatMessage.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -442,8 +453,11 @@ describe("createEmployeeMessage", () => {
     await expect(
       createEmployeeMessage(employeeId, "Ainda preciso de ajuda."),
     ).resolves.toMatchObject({
-      shouldRunAgent: false,
-      message: { sender: MessageSender.EMPLOYEE },
+      success: true,
+      data: expect.objectContaining({
+        shouldRunAgent: false,
+        message: expect.objectContaining({ sender: MessageSender.EMPLOYEE }),
+      }),
     });
   });
 
@@ -460,7 +474,7 @@ describe("createEmployeeMessage", () => {
         "Quero atualizar este chamado.",
         "ticket-2",
       ),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
     expect(prisma.chatMessage.count).not.toHaveBeenCalled();
   });
 
@@ -474,7 +488,7 @@ describe("createEmployeeMessage", () => {
 
     await expect(
       createEmployeeMessage(employeeId, "Mensagem adicional."),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
 });
@@ -497,7 +511,10 @@ describe("saveAssistantMessage", () => {
         { options: [] },
         { confidenceScore: 85 },
       ),
-    ).resolves.toMatchObject({ sender: MessageSender.ASSISTANT });
+    ).resolves.toMatchObject({
+      success: true,
+      data: expect.objectContaining({ sender: MessageSender.ASSISTANT }),
+    });
     expect(transactionMock.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: sessionId, status: ChatStatus.BOT_ACTIVE },
@@ -525,7 +542,7 @@ describe("saveAssistantMessage", () => {
       status: "WAITING_ANALYST",
     });
 
-    await saveAssistantMessage(
+    const savedHandoff = await saveAssistantMessage(
       sessionId,
       "Estou encaminhando para um analista.",
       {
@@ -541,6 +558,7 @@ describe("saveAssistantMessage", () => {
           "A busca na Central de Ajuda não encontrou artigos relevantes.",
       },
     );
+    expect(savedHandoff.success).toBe(true);
 
     expect(transactionMock.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -586,7 +604,7 @@ describe("saveAssistantMessage", () => {
           handoffSummary: "x".repeat(2500),
         },
       ),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
     expect(transactionMock.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -621,7 +639,10 @@ describe("saveAssistantMessage", () => {
           handoffSummary: "O chamado vinculado está com o prazo vencido.",
         },
       ),
-    ).resolves.toMatchObject({ sender: MessageSender.ASSISTANT });
+    ).resolves.toMatchObject({
+      success: true,
+      data: expect.objectContaining({ sender: MessageSender.ASSISTANT }),
+    });
 
     expect(transactionMock.chatMessage.create).toHaveBeenCalledTimes(1);
     expect(transactionMock.chatMessage.create).toHaveBeenCalledWith(
@@ -648,7 +669,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).resolves.toEqual({ status: ChatStatus.HUMAN_ACTIVE });
+    ).resolves.toEqual({ success: true, data: { status: ChatStatus.HUMAN_ACTIVE } });
     expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -687,7 +708,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).resolves.toEqual({ status: ChatStatus.HUMAN_ACTIVE });
+    ).resolves.toEqual({ success: true, data: { status: ChatStatus.HUMAN_ACTIVE } });
     expect(prisma.chatSession.updateMany).not.toHaveBeenCalled();
   });
 
@@ -697,14 +718,14 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
 
     setSession(ChatStatus.HUMAN_ACTIVE, "analyst-2");
     await expect(
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
   });
 
   it("detecta a corrida quando outro analista assume primeiro", async () => {
@@ -716,7 +737,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
   });
 
   it("devolve a conversa ao agente e remove a atribuição humana", async () => {
@@ -728,7 +749,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "return_to_bot",
       }),
-    ).resolves.toEqual({ status: ChatStatus.BOT_ACTIVE });
+    ).resolves.toEqual({ success: true, data: { status: ChatStatus.BOT_ACTIVE } });
     expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -762,7 +783,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "return_to_bot",
       }),
-    ).resolves.toEqual({ status: ChatStatus.BOT_ACTIVE });
+    ).resolves.toEqual({ success: true, data: { status: ChatStatus.BOT_ACTIVE } });
     expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -785,12 +806,12 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "return_to_bot",
       }),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
     await expect(
       performAnalystConversationAction(analystId, sessionId, {
         action: "close",
       }),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
     expect(prisma.chatSession.updateMany).not.toHaveBeenCalled();
   });
 
@@ -802,7 +823,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "return_to_bot",
       }),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
   });
 
   it("encerra uma conversa somente quando ela continua atribuída ao analista", async () => {
@@ -814,7 +835,7 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "close",
       }),
-    ).resolves.toEqual({ status: ChatStatus.CLOSED });
+    ).resolves.toEqual({ success: true, data: { status: ChatStatus.CLOSED } });
     expect(prisma.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -841,14 +862,14 @@ describe("performAnalystConversationAction", () => {
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
 
     setSession(ChatStatus.CLOSED);
     await expect(
       performAnalystConversationAction(analystId, sessionId, {
         action: "claim",
       }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
   });
 });
 
@@ -872,7 +893,10 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Ainda estou sem acesso.",
       ),
-    ).resolves.toMatchObject({ sender: MessageSender.EMPLOYEE });
+    ).resolves.toMatchObject({
+      success: true,
+      data: expect.objectContaining({ sender: MessageSender.EMPLOYEE }),
+    });
     expect(transactionMock.chatSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ userId: employeeId }),
@@ -900,8 +924,11 @@ describe("sendManualConversationMessage", () => {
         "Estou verificando.",
       ),
     ).resolves.toMatchObject({
-      sender: MessageSender.ANALYST,
-      senderUserId: analystId,
+      success: true,
+      data: expect.objectContaining({
+        sender: MessageSender.ANALYST,
+        senderUserId: analystId,
+      }),
     });
   });
 
@@ -914,7 +941,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem indevida.",
       ),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
 
     setTransactionSession(ChatStatus.BOT_ACTIVE);
     await expect(
@@ -924,7 +951,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem fora do handoff.",
       ),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
   });
 
   it("nega mensagens de analistas não atribuídos", async () => {
@@ -936,7 +963,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem indevida.",
       ),
-    ).rejects.toMatchObject({ statusCode: 403 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
   });
 
   it("não envia mensagens quando a conversa está ausente ou encerrada", async () => {
@@ -948,7 +975,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem.",
       ),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
 
     setTransactionSession(ChatStatus.CLOSED);
     await expect(
@@ -958,7 +985,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem.",
       ),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
   });
 
   it("respeita o limite de mensagens da conversa", async () => {
@@ -972,7 +999,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem excedente.",
       ),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
 
@@ -988,7 +1015,7 @@ describe("sendManualConversationMessage", () => {
         sessionId,
         "Mensagem.",
       ),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
 });
@@ -1037,8 +1064,11 @@ describe("createTicketFromDraft", () => {
     await expect(
       createTicketFromDraft(draftOwnerId, draftMessageId),
     ).resolves.toMatchObject({
-      outcome: "created",
-      ticket: { code: "INC-1" },
+      success: true,
+      data: expect.objectContaining({
+        outcome: "created",
+        ticket: expect.objectContaining({ code: "INC-1" }),
+      }),
     });
     expect(createTicketForUser).toHaveBeenCalledWith(
       draftOwnerId,
@@ -1062,7 +1092,7 @@ describe("createTicketFromDraft", () => {
 
     await expect(
       createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 
@@ -1080,7 +1110,7 @@ describe("createTicketFromDraft", () => {
 
     await expect(
       createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(createTicketForUser).not.toHaveBeenCalled();
   });
 
@@ -1097,7 +1127,7 @@ describe("createTicketFromDraft", () => {
 
     await expect(
       createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(createTicketForUser).not.toHaveBeenCalled();
   });
 });
@@ -1138,7 +1168,10 @@ describe("cancelTicketDraft", () => {
     await expect(
       cancelTicketDraft(draftOwnerId, draftMessageId),
     ).resolves.toMatchObject({
-      messages: expect.any(Array),
+      success: true,
+      data: expect.objectContaining({
+        messages: expect.any(Array),
+      }),
     });
     expect(createTicketForUser).not.toHaveBeenCalled();
     expect(prisma.chatMessage.findFirst).toHaveBeenCalledWith(
@@ -1165,7 +1198,7 @@ describe("cancelTicketDraft", () => {
 
     await expect(
       cancelTicketDraft(draftOwnerId, draftMessageId),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 
@@ -1179,15 +1212,16 @@ describe("cancelTicketDraft", () => {
 
     await expect(
       cancelTicketDraft(draftOwnerId, draftMessageId),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
     expect(createTicketForUser).not.toHaveBeenCalled();
   });
 });
 
-it("expõe ConversationError com nome e status HTTP", () => {
-  const error = new ConversationError("Conflito", 409);
+it("expõe DomainError com nome e status HTTP", () => {
+  const error = new DomainError(AppErrors.conversationClosed);
 
   expect(error).toBeInstanceOf(Error);
-  expect(error.name).toBe("ConversationError");
-  expect(error.statusCode).toBe(409);
+  expect(error.name).toBe("DomainError");
+  expect(error.message).toBe(AppErrors.conversationClosed.message);
+  expect(error.statusCode).toBe(HttpStatus.CONFLICT);
 });

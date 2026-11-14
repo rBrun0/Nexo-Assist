@@ -1,4 +1,5 @@
-import { ApiRequestError, getJson, postJson } from "@/lib/api/http";
+import { AppErrors, err, ok, type Result } from "@/lib/errors";
+import { getJson, postJson } from "@/lib/api/http";
 import type { EmployeeConversation } from "@/lib/types/employee-conversation";
 
 type ConversationResponse = {
@@ -11,54 +12,72 @@ type ConversationMutationResponse = {
 
 async function postMyConversationAction(
   body: Record<string, unknown>,
-  fallbackError: string,
-) {
+  fallbackError: (typeof AppErrors)[keyof typeof AppErrors],
+): Promise<Result<EmployeeConversation>> {
   const result = await postJson<ConversationMutationResponse>(
     "/api/conversations/me",
     body,
     { fallbackError },
   );
 
-  if (!result?.conversation) {
-    throw new ApiRequestError(fallbackError, 500);
+  if (!result.success) {
+    return result;
   }
 
-  return result.conversation;
+  if (!result.data?.conversation) {
+    return err(fallbackError);
+  }
+
+  return ok(result.data.conversation);
 }
 
-export async function getMyConversation() {
+export async function getMyConversation(): Promise<
+  Result<EmployeeConversation | null>
+> {
   const result = await getJson<ConversationResponse>("/api/conversations/me", {
-    fallbackError: "Não foi possível carregar a conversa.",
+    fallbackError: AppErrors.loadConversationFailed,
   });
-  return result.conversation ?? null;
+
+  if (!result.success) {
+    return result;
+  }
+
+  return ok(result.data.conversation ?? null);
 }
 
 export async function confirmTicketDraft(draftMessageId: string) {
   return postMyConversationAction(
     { action: "confirm_ticket", draftMessageId },
-    "Não foi possível confirmar o chamado.",
+    AppErrors.confirmTicketFailed,
   );
 }
 
 export async function cancelTicketDraft(draftMessageId: string) {
   return postMyConversationAction(
     { action: "cancel_ticket", draftMessageId },
-    "Não foi possível cancelar o rascunho.",
+    AppErrors.cancelDraftFailed,
   );
 }
 
 export async function requestAnalyst(reason: string) {
   return postMyConversationAction(
     { action: "request_analyst", reason },
-    "Não foi possível solicitar um analista.",
+    AppErrors.requestAnalystFailed,
   );
 }
 
-export async function endConversation() {
+export async function endConversation(): Promise<
+  Result<EmployeeConversation | null>
+> {
   const result = await postJson<ConversationResponse>(
     "/api/conversations/me",
     { action: "end_conversation" },
-    { fallbackError: "Não foi possível encerrar a conversa." },
+    { fallbackError: AppErrors.endConversationFailed },
   );
-  return result.conversation ?? null;
+
+  if (!result.success) {
+    return result;
+  }
+
+  return ok(result.data.conversation ?? null);
 }

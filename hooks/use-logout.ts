@@ -14,16 +14,17 @@ export function useLogout() {
     setLogoutError("");
     setIsLoggingOut(true);
 
-    try {
-      await logoutRequest();
-      router.replace("/login");
-      router.refresh();
-    } catch (error) {
-      console.error("Falha ao encerrar sessão:", error);
+    const result = await logoutRequest();
+    if (!result.success) {
+      console.error("Falha ao encerrar sessão:", result.error);
       setLogoutError("Não foi possível sair. Tente novamente.");
-    } finally {
       setIsLoggingOut(false);
+      return;
     }
+
+    router.replace("/login");
+    router.refresh();
+    setIsLoggingOut(false);
   }
 
   return { logout, logoutError, isLoggingOut };

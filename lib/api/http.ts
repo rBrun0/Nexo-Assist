@@ -1,14 +1,10 @@
+import { AppErrors } from "@/lib/errors/app-errors";
+import { ApiRequestError } from "@/lib/errors/api-request-error";
+import { HttpStatus } from "@/lib/errors/http-status";
+import { err, ok, type Result, type ServiceError } from "@/lib/errors/result";
 import { isRecord } from "@/lib/utils/is-record";
 
-export class ApiRequestError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status = 500) {
-    super(message);
-    this.name = "ApiRequestError";
-    this.status = status;
-  }
-}
+export { ApiRequestError };
 
 type JsonBody =
   | Record<string, unknown>
@@ -19,9 +15,16 @@ type JsonBody =
   | null;
 
 type RequestOptions = {
-  fallbackError?: string;
+  fallbackError?: ServiceError;
   cache?: RequestCache;
 };
+
+function toServiceError(error: ApiRequestError): ServiceError {
+  return {
+    message: error.message,
+    statusCode: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+  };
+}
 
 function readErrorMessage(payload: unknown, fallback: string) {
   if (
@@ -42,8 +45,8 @@ async function parseJson(response: Response): Promise<unknown> {
     return JSON.parse(text) as unknown;
   } catch {
     throw new ApiRequestError(
-      "Resposta inválida do servidor.",
-      response.status,
+      AppErrors.invalidServerResponse.message,
+      response.status || AppErrors.invalidServerResponse.statusCode,
     );
   }
 }
@@ -52,9 +55,8 @@ async function requestJson<T>(
   url: string,
   init: RequestInit,
   options?: RequestOptions,
-): Promise<T> {
-  const fallbackError =
-    options?.fallbackError ?? "Não foi possível completar a requisição.";
+): Promise<Result<T>> {
+  const fallbackError = options?.fallbackError ?? AppErrors.unexpected;
 
   let response: Response;
   try {
@@ -63,28 +65,33 @@ async function requestJson<T>(
       cache: options?.cache ?? init.cache,
     });
   } catch {
-    throw new ApiRequestError(
-      "Não foi possível conectar ao servidor. Tente novamente.",
-      0,
-    );
+    return err(AppErrors.networkUnavailable);
   }
 
-  const payload = await parseJson(response);
+  let payload: unknown;
+  try {
+    payload = await parseJson(response);
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return err(toServiceError(error));
+    }
+    throw error;
+  }
 
   if (!response.ok) {
-    throw new ApiRequestError(
-      readErrorMessage(payload, fallbackError),
-      response.status,
-    );
+    return err({
+      message: readErrorMessage(payload, fallbackError.message),
+      statusCode: response.status,
+    });
   }
 
-  return payload as T;
+  return ok(payload as T);
 }
 
 export async function getJson<T>(
   url: string,
   options?: RequestOptions,
-): Promise<T> {
+): Promise<Result<T>> {
   return requestJson<T>(
     url,
     { method: "GET" },
@@ -96,7 +103,7 @@ export async function postJson<T>(
   url: string,
   body?: JsonBody,
   options?: RequestOptions,
-): Promise<T> {
+): Promise<Result<T>> {
   return requestJson<T>(
     url,
     {
@@ -113,7 +120,7 @@ export async function patchJson<T>(
   url: string,
   body?: JsonBody,
   options?: RequestOptions,
-): Promise<T> {
+): Promise<Result<T>> {
   return requestJson<T>(
     url,
     {

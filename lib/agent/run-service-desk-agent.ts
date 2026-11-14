@@ -602,7 +602,7 @@ export async function runServiceDeskAgent({
         selectedTicketId,
       });
 
-      await saveAssistantMessage(
+      const saved = await saveAssistantMessage(
         conversationId,
         responseText,
         decision,
@@ -613,6 +613,9 @@ export async function runServiceDeskAgent({
           handoffReason: assessment.handoffReason ?? handoffSummary,
         },
       );
+      if (!saved.success) {
+        throw new Error(saved.error.message);
+      }
       reportProgress({
         id: "complete",
         message: "Resposta pronta.",

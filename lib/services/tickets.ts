@@ -3,6 +3,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { Priority, Prisma, TicketStatus } from "@prisma/client";
 
+import { AppErrors, DomainError, fromDomain, type Result } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import type { CreateTicketInput } from "@/lib/validations/ticket";
 import { calculateSlaDeadline } from "@/lib/services/ticket-sla";
@@ -24,13 +25,6 @@ const ANALYST_UPDATABLE_STATUSES = [
   TicketStatus.CLOSED,
 ] as const;
 
-export class TicketInputError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TicketInputError";
-  }
-}
-
 export async function listTicketsForUser(userId: string) {
   return prisma.ticket.findMany({
     where: {
@@ -47,32 +41,34 @@ export async function createTicketCommentForUser(
   userId: string,
   author: string,
   ticketCode: string,
-  message: string
-) {
-  const ticket = await prisma.ticket.findFirst({
-    where: {
-      code: { equals: ticketCode, mode: "insensitive" },
-      OR: [
-        { createdById: userId },
-        { affectedUsers: { some: { id: userId } } },
-      ],
-    },
-    select: { id: true, code: true },
+  message: string,
+): Promise<Result<{ ticketCode: string }>> {
+  return fromDomain(async () => {
+    const ticket = await prisma.ticket.findFirst({
+      where: {
+        code: { equals: ticketCode, mode: "insensitive" },
+        OR: [
+          { createdById: userId },
+          { affectedUsers: { some: { id: userId } } },
+        ],
+      },
+      select: { id: true, code: true },
+    });
+
+    if (!ticket) {
+      throw new DomainError(AppErrors.ticketNotFoundInAccount);
+    }
+
+    await prisma.ticketComment.create({
+      data: {
+        ticketId: ticket.id,
+        author,
+        message,
+      },
+    });
+
+    return { ticketCode: ticket.code };
   });
-
-  if (!ticket) {
-    throw new TicketInputError("Chamado não encontrado na sua conta.");
-  }
-
-  await prisma.ticketComment.create({
-    data: {
-      ticketId: ticket.id,
-      author,
-      message,
-    },
-  });
-
-  return { ticketCode: ticket.code };
 }
 
 type TicketWithAffected = Prisma.TicketGetPayload<{
@@ -336,27 +332,29 @@ export async function updateTicketStatusForAnalyst(
   ticketId: string,
   status: TicketStatus,
 ) {
-  if (
-    !(ANALYST_UPDATABLE_STATUSES as readonly TicketStatus[]).includes(status)
-  ) {
-    throw new TicketInputError("Status de chamado inválido.");
-  }
+  return fromDomain(async () => {
+    if (
+      !(ANALYST_UPDATABLE_STATUSES as readonly TicketStatus[]).includes(status)
+    ) {
+      throw new DomainError(AppErrors.invalidTicketStatus);
+    }
 
-  const existing = await prisma.ticket.findUnique({
-    where: { id: ticketId },
-    select: { id: true, status: true },
-  });
-  if (!existing) {
-    throw new TicketInputError("Chamado não encontrado.");
-  }
+    const existing = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, status: true },
+    });
+    if (!existing) {
+      throw new DomainError(AppErrors.ticketNotFound);
+    }
 
-  return prisma.ticket.update({
-    where: { id: ticketId },
-    data: {
-      status,
-      ...(status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED
-        ? { isOverdue: false }
-        : {}),
-    },
+    return prisma.ticket.update({
+      where: { id: ticketId },
+      data: {
+        status,
+        ...(status === TicketStatus.RESOLVED || status === TicketStatus.CLOSED
+          ? { isOverdue: false }
+          : {}),
+      },
+    });
   });
 }

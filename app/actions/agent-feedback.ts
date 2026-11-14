@@ -1,10 +1,8 @@
 "use server";
 
-import { AuthSessionError, requireUser } from "@/lib/auth/session";
-import {
-  AgentFeedbackError,
-  submitAgentFeedback,
-} from "@/lib/services/agent-feedback";
+import { requireUser } from "@/lib/auth/session";
+import { AppErrors } from "@/lib/errors";
+import { submitAgentFeedback } from "@/lib/services/agent-feedback";
 import { submitAgentFeedbackSchema } from "@/lib/validations/agent-feedback";
 
 export async function submitAgentFeedbackAction(input: unknown) {
@@ -12,37 +10,39 @@ export async function submitAgentFeedbackAction(input: unknown) {
   if (!parsed.success) {
     return {
       success: false as const,
-      error: "Informe uma mensagem válida para o feedback.",
+      error: AppErrors.invalidAgentFeedbackInput.message,
     };
   }
 
   try {
-    const user = await requireUser();
-    const feedback = await submitAgentFeedback({
+    const userResult = await requireUser();
+    if (!userResult.success) {
+      return { success: false as const, error: userResult.error.message };
+    }
+    const user = userResult.data;
+
+    const feedbackResult = await submitAgentFeedback({
       userId: user.id,
       role: user.role,
       messageId: parsed.data.messageId,
       note: parsed.data.note,
     });
+    if (!feedbackResult.success) {
+      return { success: false as const, error: feedbackResult.error.message };
+    }
+
     return {
       success: true as const,
       feedback: {
-        id: feedback.id,
-        createdAt: feedback.createdAt.toISOString(),
+        id: feedbackResult.data.id,
+        createdAt: feedbackResult.data.createdAt.toISOString(),
       },
     };
   } catch (error) {
-    if (error instanceof AuthSessionError) {
-      return { success: false as const, error: error.message };
-    }
-    if (error instanceof AgentFeedbackError) {
-      return { success: false as const, error: error.message };
-    }
-
     console.error("Falha ao registrar feedback do agente:", error);
     return {
       success: false as const,
-      error: "Não foi possível registrar o feedback.",
+      error: AppErrors.agentFeedbackFailed.message,
     };
   }
 }

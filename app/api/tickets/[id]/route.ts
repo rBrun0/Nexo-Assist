@@ -1,12 +1,10 @@
 import { TicketStatus } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { unstable_rethrow } from "next/navigation";
+import { NextResponse } from "next/server";
 
-import { AuthSessionError, requireUser } from "@/lib/auth/session";
-import {
-  TicketInputError,
-  updateTicketStatusForAnalyst,
-} from "@/lib/services/tickets";
+import { requireUser } from "@/lib/auth/session";
+import { AppErrors, jsonError } from "@/lib/errors";
+import { updateTicketStatusForAnalyst } from "@/lib/services/tickets";
 import { analystTicketStatusSchema } from "@/lib/validations/ticket";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -16,44 +14,31 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Corpo da requisição inválido." },
-      { status: 400 },
-    );
+    return jsonError(AppErrors.invalidRequestBody);
   }
 
   try {
-    await requireUser("ANALYST");
+    const userResult = await requireUser("ANALYST");
+    if (!userResult.success) {
+      return jsonError(userResult.error);
+    }
     const { id } = await params;
     const parsed = analystTicketStatusSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Status de chamado inválido." },
-        { status: 400 },
-      );
+      return jsonError(AppErrors.invalidTicketStatus);
     }
 
-    const ticket = await updateTicketStatusForAnalyst(
+    const ticketResult = await updateTicketStatusForAnalyst(
       id,
       parsed.data.status as TicketStatus,
     );
-    return NextResponse.json({ ticket });
+    if (!ticketResult.success) {
+      return jsonError(ticketResult.error);
+    }
+    return NextResponse.json({ ticket: ticketResult.data });
   } catch (error) {
     unstable_rethrow(error);
-    if (error instanceof AuthSessionError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.statusCode },
-      );
-    }
-    if (error instanceof TicketInputError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
     console.error("Falha ao atualizar status do chamado:", error);
-    return NextResponse.json(
-      { error: "Não foi possível atualizar o chamado." },
-      { status: 500 },
-    );
+    return jsonError(AppErrors.updateTicketFailed);
   }
 }

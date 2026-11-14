@@ -17,14 +17,16 @@ Construir o app fullstack de Service Desk de TI do desafio Beyond the Bytes. Pri
 - `app/`: páginas, Server Actions e API Routes. Autenticar, autorizar, validar e delegar.
 - `lib/auth/`: sessão local, senha e helpers `getCurrentUser` / `requireUser`.
 - `lib/supabase/`: cliente browser singleton e helpers (ex.: Presence em canal público por sessão). Realtime com conteúdo de chat só após JWT customizado.
-- `lib/validations/`: contratos Zod compartilhados.
-- `lib/services/`: regras de negócio/persistência com Prisma, sem UI.
+- `lib/validations/`: contratos Zod compartilhados (entrada de API, actions e formulários).
+- `lib/forms/`: apenas React Hook Form + `zodResolver` e defaults; sem `fetch`, router ou storage.
+- `lib/errors/`: `Result`/`ServiceError`, `DomainError`, `ApiRequestError`, `HttpStatus`, catálogo `AppErrors` e `jsonError`. Falha esperada atravessa a borda como `Result`; throw de domínio fica dentro de transações Prisma para rollback. Não usar string/status HTTP soltos — usar `AppErrors` / `HttpStatus`.
+- `lib/services/`: regras de negócio/persistência com Prisma, sem UI. Funções públicas que podem falhar de forma esperada devolvem `Promise<Result<T>>`.
 - `lib/agent/`: prompts reutilizáveis, trilha pública, confiança e execução do turno.
 - `lib/mastra/`: agente, tools com schema Zod, workflow de abertura e storage dos snapshots suspensos.
 - `lib/prisma.ts`: único Prisma client e pool PostgreSQL.
 - `prisma/`: schema, migrations e seed idempotente. Nunca apagar dados no seed.
 
-Não duplicar regras entre Server Actions e rotas. Nunca confiar em `userId`, papel, conteúdo de ticket ou vínculo de analista enviado pelo browser. Verificar propriedade/role no servidor em toda operação. Use `requireUser(role)` nos adapters.
+Não duplicar regras entre Server Actions e rotas. Nunca confiar em `userId`, papel, conteúdo de ticket ou vínculo de analista enviado pelo browser. Verificar propriedade/role no servidor em toda operação. Use `requireUser(role)` nos adapters (retorna `Result`).
 
 ## Regras do domínio
 
@@ -41,7 +43,7 @@ Não duplicar regras entre Server Actions e rotas. Nunca confiar em `userId`, pa
 
 ## Qualidade e segurança
 
-- Validar com Zod no limite do servidor; erros explícitos sem expor stack/segredo.
+- Validar com Zod no limite do servidor; erros explícitos sem expor stack/segredo. Falha de domínio esperada vira `Result` na borda; `catch` residual só para 500/`unstable_rethrow`.
 - Nunca enviar `DATABASE_URL`, tokens admin ou chave Gemini ao browser.
 - Respeitar privacidade por proprietário nas queries, comments e ferramentas do agente.
 - Self-service de tickets força `affectedUserIds = [usuário autenticado]` no servidor.

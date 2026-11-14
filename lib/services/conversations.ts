@@ -9,6 +9,13 @@ import {
 } from "@prisma/client";
 
 import { CONVERSATION_MESSAGE_LIMIT } from "@/lib/constants";
+import {
+  AppErrors,
+  DomainError,
+  fromDomain,
+  unwrapOrThrow,
+  type ServiceError,
+} from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { isTicketOverdue } from "@/lib/services/ticket-sla";
 import {
@@ -25,7 +32,6 @@ const ACTIVE_CHAT_STATUSES = [
   ChatStatus.HUMAN_ACTIVE,
 ];
 
-/** Fila do analista: ativas + encerradas (detalhe “Resolvida pelo …” no pen.dev). */
 const ANALYST_QUEUE_CHAT_STATUSES = [
   ...ACTIVE_CHAT_STATUSES,
   ChatStatus.CLOSED,
@@ -159,14 +165,8 @@ function mergeEmployeeTickets(
     }));
 }
 
-export class ConversationError extends Error {
-  constructor(
-    message: string,
-    readonly statusCode = 400,
-  ) {
-    super(message);
-    this.name = "ConversationError";
-  }
+function rethrowDomain(error: ServiceError) {
+  return new DomainError(error);
 }
 
 export async function getChatHistoryForUser(
@@ -174,53 +174,51 @@ export async function getChatHistoryForUser(
   role: Role,
   sessionId: string,
 ) {
-  const session = await prisma.chatSession.findFirst({
-    where: {
-      id: sessionId,
-      ...(role === Role.EMPLOYEE ? { userId } : {}),
-    },
-    select: { id: true },
-  });
-  if (!session) {
-    throw new ConversationError(
-      "Conversa não encontrada ou sem permissão.",
-      404,
-    );
-  }
+  return fromDomain(async () => {
+    const session = await prisma.chatSession.findFirst({
+      where: {
+        id: sessionId,
+        ...(role === Role.EMPLOYEE ? { userId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!session) {
+      throw new DomainError(AppErrors.conversationNotFoundOrForbidden);
+    }
 
-  await prisma.chatMessage.updateMany({
-    where: {
-      chatSessionId: session.id,
-      sender:
+    await prisma.chatMessage.updateMany({
+      where: {
+        chatSessionId: session.id,
+        sender:
+          role === Role.EMPLOYEE
+            ? { in: [MessageSender.ASSISTANT, MessageSender.ANALYST] }
+            : MessageSender.EMPLOYEE,
+        ...(role === Role.EMPLOYEE
+          ? { readAtByEmployee: null }
+          : { readAtByAnalyst: null }),
+      },
+      data:
         role === Role.EMPLOYEE
-          ? { in: [MessageSender.ASSISTANT, MessageSender.ANALYST] }
-          : MessageSender.EMPLOYEE,
-      ...(role === Role.EMPLOYEE
-        ? { readAtByEmployee: null }
-        : { readAtByAnalyst: null }),
-    },
-    data:
-      role === Role.EMPLOYEE
-        ? { readAtByEmployee: new Date() }
-        : { readAtByAnalyst: new Date() },
-  });
+          ? { readAtByEmployee: new Date() }
+          : { readAtByAnalyst: new Date() },
+    });
 
-  const messages = await prisma.chatMessage.findMany({
-    where: { chatSessionId: session.id },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    include: {
-      senderUser: { select: { id: true, name: true, role: true, job: true } },
-    },
+    const messages = await prisma.chatMessage.findMany({
+      where: { chatSessionId: session.id },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      include: {
+        senderUser: { select: { id: true, name: true, role: true, job: true } },
+      },
+    });
+    return messages.map((message) => ({
+      ...message,
+      createdAt: message.createdAt.toISOString(),
+      readAtByEmployee: message.readAtByEmployee?.toISOString() ?? null,
+      readAtByAnalyst: message.readAtByAnalyst?.toISOString() ?? null,
+    }));
   });
-  return messages.map((message) => ({
-    ...message,
-    createdAt: message.createdAt.toISOString(),
-    readAtByEmployee: message.readAtByEmployee?.toISOString() ?? null,
-    readAtByAnalyst: message.readAtByAnalyst?.toISOString() ?? null,
-  }));
 }
 
-/** Busca a conversa ativa do funcionário sem criar uma nova. */
 export async function findActiveEmployeeConversation(userId: string) {
   return prisma.chatSession.findFirst({
     where: { userId, status: { in: ACTIVE_CHAT_STATUSES } },
@@ -247,7 +245,6 @@ export async function getOrCreateEmployeeConversation(userId: string) {
   }
 }
 
-/** Retorna a conversa ativa com histórico, ou null se ainda não houver sessão. */
 export async function getEmployeeConversation(userId: string) {
   const session = await findActiveEmployeeConversation(userId);
   if (!session) {
@@ -293,83 +290,79 @@ export async function createEmployeeMessage(
   content: string,
   selectedTicketId?: string,
 ) {
-  const session = await getOrCreateEmployeeConversation(userId);
+  return fromDomain(async () => {
+    const session = await getOrCreateEmployeeConversation(userId);
 
-  if (session.status === ChatStatus.CLOSED) {
-    throw new ConversationError("Esta conversa foi encerrada.", 409);
-  }
-
-  if (selectedTicketId) {
-    const ticket = await prisma.ticket.findFirst({
-      where: {
-        id: selectedTicketId,
-        OR: [
-          { createdById: userId },
-          { affectedUsers: { some: { id: userId } } },
-        ],
-      },
-      select: { id: true },
-    });
-    if (!ticket) {
-      throw new ConversationError("Chamado selecionado não encontrado.", 404);
+    if (session.status === ChatStatus.CLOSED) {
+      throw new DomainError(AppErrors.conversationClosed);
     }
-  }
 
-  if (session.status !== ChatStatus.BOT_ACTIVE) {
-    const message = await sendManualConversationMessage(
-      userId,
-      Role.EMPLOYEE,
-      session.id,
-      content,
-    );
-    return { session, message, shouldRunAgent: false };
-  }
+    if (selectedTicketId) {
+      const ticket = await prisma.ticket.findFirst({
+        where: {
+          id: selectedTicketId,
+          OR: [
+            { createdById: userId },
+            { affectedUsers: { some: { id: userId } } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (!ticket) {
+        throw new DomainError(AppErrors.selectedTicketNotFound);
+      }
+    }
 
-  const message = await prisma.$transaction(async (transaction) => {
-    const activeSession = await transaction.chatSession.findFirst({
-      where: {
-        id: session.id,
-        userId,
-        status: ChatStatus.BOT_ACTIVE,
-      },
-      select: { id: true },
-    });
-    if (!activeSession) {
-      throw new ConversationError(
-        "O estado da conversa mudou. Atualize e tente novamente.",
-        409,
+    if (session.status !== ChatStatus.BOT_ACTIVE) {
+      const message = unwrapOrThrow(
+        await sendManualConversationMessage(
+          userId,
+          Role.EMPLOYEE,
+          session.id,
+          content,
+        ),
+        rethrowDomain,
       );
+      return { session, message, shouldRunAgent: false };
     }
 
-    const messageCount = await countCountableMessages(
-      session.id,
-      transaction,
-    );
-    if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
-      throw new ConversationError(
-        "Esta conversa atingiu o limite de 30 mensagens. Solicite um analista para continuar.",
-        409,
-      );
-    }
+    const message = await prisma.$transaction(async (transaction) => {
+      const activeSession = await transaction.chatSession.findFirst({
+        where: {
+          id: session.id,
+          userId,
+          status: ChatStatus.BOT_ACTIVE,
+        },
+        select: { id: true },
+      });
+      if (!activeSession) {
+        throw new DomainError(AppErrors.conversationStateChanged);
+      }
 
-    const createdMessage = await transaction.chatMessage.create({
-      data: {
-        chatSessionId: session.id,
-        sender: MessageSender.EMPLOYEE,
-        senderUserId: userId,
-        content,
-        readAtByEmployee: new Date(),
-        metadata: selectedTicketId ? { selectedTicketId } : Prisma.JsonNull,
-      },
+      const messageCount = await countCountableMessages(session.id, transaction);
+      if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
+        throw new DomainError(AppErrors.conversationMessageLimitNeedAnalyst);
+      }
+
+      const createdMessage = await transaction.chatMessage.create({
+        data: {
+          chatSessionId: session.id,
+          sender: MessageSender.EMPLOYEE,
+          senderUserId: userId,
+          content,
+          readAtByEmployee: new Date(),
+          metadata: selectedTicketId ? { selectedTicketId } : Prisma.JsonNull,
+        },
+      });
+      await transaction.chatSession.update({
+        where: { id: session.id },
+        data: { updatedAt: new Date() },
+      });
+      return createdMessage;
     });
-    await transaction.chatSession.update({
-      where: { id: session.id },
-      data: { updatedAt: new Date() },
-    });
-    return createdMessage;
+
+    return { session, message, shouldRunAgent: true };
   });
-
-  return { session, message, shouldRunAgent: true };
 }
 
 export async function sendManualConversationMessage(
@@ -378,7 +371,8 @@ export async function sendManualConversationMessage(
   sessionId: string,
   content: string,
 ) {
-  return prisma.$transaction(async (transaction) => {
+  return fromDomain(async () =>
+    prisma.$transaction(async (transaction) => {
     const session = await transaction.chatSession.findUnique({
       where: { id: sessionId },
       select: {
@@ -390,7 +384,7 @@ export async function sendManualConversationMessage(
     });
 
     if (!session || session.status === ChatStatus.CLOSED) {
-      throw new ConversationError("Conversa não encontrada ou encerrada.", 404);
+      throw new DomainError(AppErrors.conversationNotFoundOrClosed);
     }
 
     const sender =
@@ -408,20 +402,16 @@ export async function sendManualConversationMessage(
       session.assignedAnalystId === actorId;
 
     if (!isAllowedEmployee && !isAssignedAnalyst) {
-      throw new ConversationError(
+      throw new DomainError(
         actorRole === Role.ANALYST
-          ? "A conversa precisa estar atribuída a você para responder."
-          : "Mensagens manuais só podem ser enviadas durante o atendimento humano.",
-        403,
+          ? AppErrors.conversationMustBeAssignedToReply
+          : AppErrors.manualMessagesOnlyDuringHuman,
       );
     }
 
     const messageCount = await countCountableMessages(sessionId, transaction);
     if (messageCount >= CONVERSATION_MESSAGE_LIMIT) {
-      throw new ConversationError(
-        "Esta conversa atingiu o limite de 30 mensagens.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationMessageLimitReached);
     }
 
     const now = new Date();
@@ -436,10 +426,7 @@ export async function sendManualConversationMessage(
       data: { updatedAt: now },
     });
     if (allowedSession.count !== 1) {
-      throw new ConversationError(
-        "O estado ou responsável pela conversa mudou. Atualize e tente novamente.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationOwnerOrStateChanged);
     }
 
     return transaction.chatMessage.create({
@@ -453,7 +440,8 @@ export async function sendManualConversationMessage(
           : { readAtByAnalyst: now }),
       },
     });
-  });
+  }),
+  );
 }
 
 export async function markSessionWaitingHuman(
@@ -523,7 +511,8 @@ export async function saveAssistantMessage(
     handoffReason?: string;
   },
 ) {
-  return prisma.$transaction(async (transaction) => {
+  return fromDomain(async () =>
+    prisma.$transaction(async (transaction) => {
     const now = new Date();
     const updatedSession = await transaction.chatSession.updateMany({
       where: { id: sessionId, status: ChatStatus.BOT_ACTIVE },
@@ -543,30 +532,21 @@ export async function saveAssistantMessage(
     });
     if (updatedSession.count !== 1) {
       if (!handoffSummary) {
-        throw new ConversationError(
-          "A conversa mudou de estado antes da resposta do agente ser salva.",
-          409,
-        );
+        throw new DomainError(AppErrors.assistantSaveStateChanged);
       }
       const current = await transaction.chatSession.findUnique({
         where: { id: sessionId },
         select: { status: true },
       });
       if (current?.status !== ChatStatus.WAITING_HUMAN) {
-        throw new ConversationError(
-          "A conversa mudou de estado antes da resposta do agente ser salva.",
-          409,
-        );
+        throw new DomainError(AppErrors.assistantSaveStateChanged);
       }
       const kept = await transaction.chatSession.updateMany({
         where: { id: sessionId, status: ChatStatus.WAITING_HUMAN },
         data: { confidenceScore, updatedAt: now },
       });
       if (kept.count !== 1) {
-        throw new ConversationError(
-          "A conversa mudou de estado antes da resposta do agente ser salva.",
-          409,
-        );
+        throw new DomainError(AppErrors.assistantSaveStateChanged);
       }
       return transaction.chatMessage.create({
         data: {
@@ -608,110 +588,103 @@ export async function saveAssistantMessage(
     }
 
     return message;
-  });
+  }),
+  );
 }
 
 export async function endEmployeeConversation(userId: string) {
-  const session = await findActiveEmployeeConversation(userId);
-  if (!session) {
-    throw new ConversationError("Não há conversa ativa para encerrar.", 404);
-  }
+  return fromDomain(async () => {
+    const session = await findActiveEmployeeConversation(userId);
+    if (!session) {
+      throw new DomainError(AppErrors.noActiveConversationToEnd);
+    }
 
-  if (session.status === ChatStatus.HUMAN_ACTIVE) {
-    throw new ConversationError(
-      "O analista precisa encerrar este atendimento.",
-      403,
-    );
-  }
+    if (session.status === ChatStatus.HUMAN_ACTIVE) {
+      throw new DomainError(AppErrors.analystMustCloseConversation);
+    }
 
-  if (session.status !== ChatStatus.BOT_ACTIVE) {
-    throw new ConversationError(
-      "Só é possível encerrar enquanto o assistente está atendendo.",
-      409,
-    );
-  }
+    if (session.status !== ChatStatus.BOT_ACTIVE) {
+      throw new DomainError(AppErrors.endOnlyWhileBotActive);
+    }
 
-  const now = new Date();
-  const closed = await prisma.chatSession.updateMany({
-    where: {
-      id: session.id,
-      userId,
-      status: ChatStatus.BOT_ACTIVE,
-    },
-    data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
+    const now = new Date();
+    const closed = await prisma.chatSession.updateMany({
+      where: {
+        id: session.id,
+        userId,
+        status: ChatStatus.BOT_ACTIVE,
+      },
+      data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
+    });
+    if (closed.count !== 1) {
+      throw new DomainError(AppErrors.conversationUpdatedRetry);
+    }
+
+    await createSystemMessage(session.id, "Conversa encerrada", prisma, now);
+    return { status: ChatStatus.CLOSED };
   });
-  if (closed.count !== 1) {
-    throw new ConversationError(
-      "A conversa foi atualizada. Atualize os dados antes de tentar novamente.",
-      409,
-    );
-  }
-
-  await createSystemMessage(session.id, "Conversa encerrada", prisma, now);
-  return { status: ChatStatus.CLOSED };
 }
 
 export async function requestAnalystHandoff(
   userId: string,
   reason = "Funcionário solicitou atendimento humano.",
 ) {
-  const session = await getOrCreateEmployeeConversation(userId);
+  return fromDomain(async () => {
+    const session = await getOrCreateEmployeeConversation(userId);
 
-  if (session.status === ChatStatus.CLOSED) {
-    throw new ConversationError("Esta conversa foi encerrada.", 409);
-  }
-
-  if (
-    session.status === ChatStatus.WAITING_HUMAN ||
-    session.status === ChatStatus.HUMAN_ACTIVE
-  ) {
-    const current = await getEmployeeConversation(userId);
-    if (!current) {
-      throw new ConversationError("Conversa não encontrada.", 404);
+    if (session.status === ChatStatus.CLOSED) {
+      throw new DomainError(AppErrors.conversationClosed);
     }
-    return current;
-  }
 
-  const now = new Date();
-  const summary = reason.slice(0, 2000);
-  const updated = await prisma.chatSession.updateMany({
-    where: {
-      id: session.id,
-      userId,
-      status: ChatStatus.BOT_ACTIVE,
-    },
-    data: {
-      status: ChatStatus.WAITING_HUMAN,
-      assignedAnalystId: null,
-      handoffSummary: summary,
-      handoffReason: summary,
-      handoffAt: now,
-      updatedAt: now,
-    },
-  });
+    if (
+      session.status === ChatStatus.WAITING_HUMAN ||
+      session.status === ChatStatus.HUMAN_ACTIVE
+    ) {
+      const current = await getEmployeeConversation(userId);
+      if (!current) {
+        throw new DomainError(AppErrors.conversationNotFound);
+      }
+      return current;
+    }
 
-  if (updated.count !== 1) {
-    throw new ConversationError(
-      "O estado da conversa mudou. Atualize e tente novamente.",
-      409,
+    const now = new Date();
+    const summary = reason.slice(0, 2000);
+    const updated = await prisma.chatSession.updateMany({
+      where: {
+        id: session.id,
+        userId,
+        status: ChatStatus.BOT_ACTIVE,
+      },
+      data: {
+        status: ChatStatus.WAITING_HUMAN,
+        assignedAnalystId: null,
+        handoffSummary: summary,
+        handoffReason: summary,
+        handoffAt: now,
+        updatedAt: now,
+      },
+    });
+
+    if (updated.count !== 1) {
+      throw new DomainError(AppErrors.conversationStateChanged);
+    }
+
+    await createSystemMessage(
+      session.id,
+      "Transferida para suporte N2",
+      prisma,
+      now,
     );
-  }
+    if (session.ticketId) {
+      await transferTicketToAnalyst(session.ticketId);
+    }
 
-  await createSystemMessage(
-    session.id,
-    "Transferida para suporte N2",
-    prisma,
-    now,
-  );
-  if (session.ticketId) {
-    await transferTicketToAnalyst(session.ticketId);
-  }
-
-  const conversation = await getEmployeeConversation(userId);
-  if (!conversation) {
-    throw new ConversationError("Conversa não encontrada.", 404);
-  }
-  return conversation;
+    const conversation = await getEmployeeConversation(userId);
+    if (!conversation) {
+      throw new DomainError(AppErrors.conversationNotFound);
+    }
+    return conversation;
+  });
 }
 
 export async function getEmployeeTicketsForAgent(userId: string) {
@@ -750,13 +723,11 @@ export async function createTicketFromDraft(
   userId: string,
   draftMessageId: string,
 ) {
+  return fromDomain(async () => {
   const session = await getOrCreateEmployeeConversation(userId);
   const messageCount = await countCountableMessages(session.id);
   if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
-    throw new ConversationError(
-      "Não há espaço para confirmar nesta conversa.",
-      409,
-    );
+    throw new DomainError(AppErrors.conversationNoSpaceToConfirm);
   }
 
   const draftMessage = await prisma.chatMessage.findFirst({
@@ -772,21 +743,18 @@ export async function createTicketFromDraft(
     !draftMessage.metadata ||
     typeof draftMessage.metadata !== "object"
   ) {
-    throw new ConversationError("Rascunho de chamado não encontrado.", 404);
+    throw new DomainError(AppErrors.ticketDraftNotFound);
   }
 
   const metadata = draftMessage.metadata as Record<string, unknown>;
   if (metadata.kind !== "ticket_draft") {
-    throw new ConversationError(
-      "Esta mensagem não contém um rascunho de chamado.",
-      400,
-    );
+    throw new DomainError(AppErrors.ticketDraftNotInMessage);
   }
   if (metadata.confirmed === true) {
-    throw new ConversationError("Este rascunho já foi confirmado.", 409);
+    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
   }
   if (metadata.cancelled === true) {
-    throw new ConversationError("Este rascunho foi cancelado.", 409);
+    throw new DomainError(AppErrors.ticketDraftCancelled);
   }
 
   const draft = ticketDraftSchema.safeParse({
@@ -796,7 +764,7 @@ export async function createTicketFromDraft(
     affectedUserIds: [userId],
   });
   if (!draft.success) {
-    throw new ConversationError("O rascunho não é mais válido.", 400);
+    throw new DomainError(AppErrors.ticketDraftInvalid);
   }
 
   const confirmedAt = new Date().toISOString();
@@ -815,19 +783,18 @@ export async function createTicketFromDraft(
       AND COALESCE(metadata->>'cancelled', 'false') <> 'true'
   `;
   if (Number(claimed) !== 1) {
-    throw new ConversationError("Este rascunho já foi confirmado.", 409);
+    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
   }
 
   const workflowRunId =
     typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
   const result = workflowRunId
     ? await (async () => {
-        const { resumeOpenTicketRun } = await import(
-          "@/lib/mastra/resume-open-ticket"
-        );
+        const { resumeOpenTicketRun } =
+          await import("@/lib/mastra/resume-open-ticket");
         const resumed = await resumeOpenTicketRun(workflowRunId, true);
         if (resumed.cancelled || !resumed.outcome) {
-          throw new ConversationError("Não foi possível gravar o chamado.", 502);
+          throw new DomainError(AppErrors.ticketPersistFailed);
         }
         return { ticket: resumed.ticket, outcome: resumed.outcome };
       })()
@@ -889,9 +856,12 @@ export async function createTicketFromDraft(
   const confirmedPriority = result.ticket?.priority ?? draft.data.priority;
   if (confirmedPriority === "CRITICAL" && result.ticket) {
     if (session.status === ChatStatus.BOT_ACTIVE) {
-      await requestAnalystHandoff(
-        userId,
-        `Chamado ${result.ticket.code} classificado como crítico.`,
+      unwrapOrThrow(
+        await requestAnalystHandoff(
+          userId,
+          `Chamado ${result.ticket.code} classificado como crítico.`,
+        ),
+        rethrowDomain,
       );
     } else if (session.status === ChatStatus.WAITING_HUMAN) {
       await transferTicketToAnalyst(result.ticket.id);
@@ -903,19 +873,18 @@ export async function createTicketFromDraft(
     ticket: result.ticket,
     messages: [userMessage, assistantMessage],
   };
+  });
 }
 
 export async function cancelTicketDraft(
   userId: string,
   draftMessageId: string,
 ) {
+  return fromDomain(async () => {
   const session = await getOrCreateEmployeeConversation(userId);
   const messageCount = await countCountableMessages(session.id);
   if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
-    throw new ConversationError(
-      "Não há espaço para cancelar nesta conversa.",
-      409,
-    );
+    throw new DomainError(AppErrors.conversationNoSpaceToCancel);
   }
 
   const draftMessage = await prisma.chatMessage.findFirst({
@@ -931,21 +900,18 @@ export async function cancelTicketDraft(
     !draftMessage.metadata ||
     typeof draftMessage.metadata !== "object"
   ) {
-    throw new ConversationError("Rascunho de chamado não encontrado.", 404);
+    throw new DomainError(AppErrors.ticketDraftNotFound);
   }
 
   const metadata = draftMessage.metadata as Record<string, unknown>;
   if (metadata.kind !== "ticket_draft") {
-    throw new ConversationError(
-      "Esta mensagem não contém um rascunho de chamado.",
-      400,
-    );
+    throw new DomainError(AppErrors.ticketDraftNotInMessage);
   }
   if (metadata.confirmed === true) {
-    throw new ConversationError("Este rascunho já foi confirmado.", 409);
+    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
   }
   if (metadata.cancelled === true) {
-    throw new ConversationError("Este rascunho já foi cancelado.", 409);
+    throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
   }
 
   const cancelledAt = new Date().toISOString();
@@ -963,16 +929,15 @@ export async function cancelTicketDraft(
       AND COALESCE(metadata->>'cancelled', 'false') <> 'true'
   `;
   if (Number(claimed) !== 1) {
-    throw new ConversationError("Este rascunho já foi cancelado.", 409);
+    throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
   }
 
   const workflowRunId =
     typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
   if (workflowRunId) {
     try {
-      const { resumeOpenTicketRun } = await import(
-        "@/lib/mastra/resume-open-ticket"
-      );
+      const { resumeOpenTicketRun } =
+        await import("@/lib/mastra/resume-open-ticket");
       await resumeOpenTicketRun(workflowRunId, false);
     } catch (error) {
       console.error("Falha ao encerrar o workflow do rascunho:", error);
@@ -1016,6 +981,7 @@ export async function cancelTicketDraft(
   });
 
   return { messages: [userMessage, assistantMessage] };
+  });
 }
 
 export async function listAnalystConversations() {
@@ -1131,6 +1097,7 @@ export async function performAnalystConversationAction(
     | { action: "close" }
     | { action: "send_message"; message: string },
 ) {
+  return fromDomain(async () => {
   const session = await prisma.chatSession.findUnique({
     where: { id: sessionId },
     select: {
@@ -1141,10 +1108,7 @@ export async function performAnalystConversationAction(
     },
   });
   if (!session || session.status === ChatStatus.CLOSED) {
-    throw new ConversationError(
-      "Conversa não encontrada ou já encerrada.",
-      404,
-    );
+    throw new DomainError(AppErrors.conversationNotFoundOrAlreadyClosed);
   }
 
   if (action.action === "claim") {
@@ -1157,10 +1121,7 @@ export async function performAnalystConversationAction(
     }
 
     if (session.status !== ChatStatus.WAITING_HUMAN) {
-      throw new ConversationError(
-        "Esta conversa não está aguardando ou já foi assumida por outro analista.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationNotWaitingOrClaimed);
     }
 
     const analyst = await prisma.user.findUnique({
@@ -1181,10 +1142,7 @@ export async function performAnalystConversationAction(
       },
     });
     if (claimed.count !== 1) {
-      throw new ConversationError(
-        "Outro analista assumiu esta conversa. Atualize a fila.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationClaimedByOther);
     }
     await createSystemMessage(
       sessionId,
@@ -1233,10 +1191,7 @@ export async function performAnalystConversationAction(
         data: clearHandoffData,
       });
       if (returned.count !== 1) {
-        throw new ConversationError(
-          "A conversa foi atualizada por outra pessoa. Atualize os dados antes de tentar novamente.",
-          409,
-        );
+        throw new DomainError(AppErrors.conversationUpdatedByOther);
       }
       await createSystemMessage(
         sessionId,
@@ -1251,10 +1206,7 @@ export async function performAnalystConversationAction(
       session.status !== ChatStatus.HUMAN_ACTIVE ||
       session.assignedAnalystId !== analystId
     ) {
-      throw new ConversationError(
-        "A conversa precisa estar atribuída a você.",
-        403,
-      );
+      throw new DomainError(AppErrors.conversationMustBeAssigned);
     }
 
     const returned = await prisma.chatSession.updateMany({
@@ -1266,10 +1218,7 @@ export async function performAnalystConversationAction(
       data: clearHandoffData,
     });
     if (returned.count !== 1) {
-      throw new ConversationError(
-        "A conversa foi atualizada por outra pessoa. Atualize os dados antes de tentar novamente.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationUpdatedByOther);
     }
     await createSystemMessage(
       sessionId,
@@ -1284,10 +1233,7 @@ export async function performAnalystConversationAction(
     session.assignedAnalystId !== analystId ||
     session.status !== ChatStatus.HUMAN_ACTIVE
   ) {
-    throw new ConversationError(
-      "A conversa precisa estar atribuída a você.",
-      403,
-    );
+    throw new DomainError(AppErrors.conversationMustBeAssigned);
   }
 
   if (action.action === "close") {
@@ -1301,22 +1247,23 @@ export async function performAnalystConversationAction(
       data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
     });
     if (closed.count !== 1) {
-      throw new ConversationError(
-        "A conversa foi atualizada por outra pessoa. Atualize os dados antes de tentar novamente.",
-        409,
-      );
+      throw new DomainError(AppErrors.conversationUpdatedByOther);
     }
     await createSystemMessage(sessionId, "Conversa encerrada", prisma, now);
     return { status: ChatStatus.CLOSED };
   }
 
-  const message = await sendManualConversationMessage(
-    analystId,
-    Role.ANALYST,
-    sessionId,
-    action.message,
+  const message = unwrapOrThrow(
+    await sendManualConversationMessage(
+      analystId,
+      Role.ANALYST,
+      sessionId,
+      action.message,
+    ),
+    rethrowDomain,
   );
   return { status: ChatStatus.HUMAN_ACTIVE, message };
+  });
 }
 
 export const openTicketStatuses = [
