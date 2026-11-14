@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, MessageSquare, MessageSquareText, UserRound } from "lucide-react";
+import { LogOut, MessageSquare, UserRound } from "lucide-react";
 import Link from "next/link";
 
 import { NexoMark } from "@/components/brand/nexo-mark";
