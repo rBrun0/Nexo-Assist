@@ -40,7 +40,7 @@ export function useLoginForm() {
     }
 
     router.replace(
-      result.data.role === "ANALYST" ? "/analyst" : "/employee/atendimento",
+      result.data.role === "ANALYST" ? "/analista" : "/servicedesk/atendimento",
     );
     router.refresh();
     setIsSubmitting(false);

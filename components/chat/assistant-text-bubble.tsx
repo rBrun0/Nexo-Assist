@@ -2,27 +2,23 @@
 
 import type { ReactNode } from "react";
 
-import { formatMessageTime } from "@/lib/chat/format-message-time";
 import { formatAssistantRichText } from "@/lib/chat/format-assistant-rich-text";
 
 export function AssistantTextBubble({
   content,
-  createdAt,
   footer,
 }: {
   content: string;
-  createdAt: string;
+  /** Mantido na assinatura: turnos ainda passam createdAt; horário não aparece no design do funcionário. */
+  createdAt?: string;
   footer?: ReactNode;
 }) {
   if (!content.trim() && !footer) return null;
 
   return (
-    <div className="relative rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
+    <div className="w-fit max-w-full rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
       {content.trim() ? formatAssistantRichText(content) : null}
       {footer}
-      <p className="absolute mt-1 text-right text-[10px] text-slate-400 right-3 bottom-0">
-        {formatMessageTime(createdAt)}
-      </p>
     </div>
   );
 }

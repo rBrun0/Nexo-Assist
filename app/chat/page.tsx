@@ -7,6 +7,6 @@ export const instant = false;
 export default async function ChatRoute() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
-  if (user.role === "ANALYST") redirect("/analyst");
-  redirect("/employee/atendimento");
+  if (user.role === "ANALYST") redirect("/analista");
+  redirect("/servicedesk/atendimento");
 }

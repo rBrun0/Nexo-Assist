@@ -8,7 +8,7 @@ export const instant = false;
 
 export default async function HomePage() {
   const user = await getCurrentUser();
-  if (user) redirect(user.role === "ANALYST" ? "/analyst" : "/chat");
+  if (user) redirect(user.role === "ANALYST" ? "/analista" : "/chat");
 
   const resolvedWithoutQueuePercent = await getResolvedWithoutQueuePercent();
 

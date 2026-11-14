@@ -49,6 +49,7 @@ Não duplicar regras entre Server Actions e rotas. Nunca confiar em `userId`, pa
 - Self-service de tickets força `affectedUserIds = [usuário autenticado]` no servidor.
 - Fazer alterações pequenas, tipadas e compatíveis com padrões existentes.
 - Validar com typecheck, lint, testes focados e build.
+- Biome é o lint do dia a dia: `npm run lint` (regras), `npm run check` (regras + formato) e `npm run format`. ESLint do Next continua em `npm run lint:eslint`. Husky formata os arquivos staged no commit e roda `npm run typecheck` no push. Não reformatar o repositório inteiro sem pedido.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

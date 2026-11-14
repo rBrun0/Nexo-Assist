@@ -49,7 +49,7 @@ export function AnalystQueuePanel({
   return (
     <aside
       className={cn(
-        "w-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white sm:flex sm:w-[330px]",
+        "w-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white sm:flex sm:w-[360px]",
         hasSelectedConversation ? "hidden" : "flex",
       )}
       aria-label="Lista de conversas"

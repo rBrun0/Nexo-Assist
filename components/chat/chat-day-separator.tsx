@@ -45,12 +45,24 @@ export function formatChatDayLabel(isoDate: string, now = new Date()) {
   }).format(date);
 }
 
-export function ChatDaySeparator({ label }: { label: string }) {
+export function ChatDaySeparator({
+  label,
+  tone = "white",
+}: {
+  label: string;
+  tone?: "white" | "muted";
+}) {
   if (!label) return null;
 
   return (
     <div className="flex items-center justify-center py-2" role="separator">
-      <span className="rounded-full bg-white px-3 py-1 text-[10px] font-medium text-slate-600 shadow-xs">
+      <span
+        className={
+          tone === "muted"
+            ? "rounded-full bg-slate-100 px-3 py-1 text-[10px] font-medium text-slate-600 shadow-xs"
+            : "rounded-full bg-white px-3 py-1 text-[10px] font-medium text-slate-600 shadow-xs"
+        }
+      >
         {label}
       </span>
     </div>

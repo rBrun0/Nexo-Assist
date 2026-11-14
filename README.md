@@ -90,11 +90,20 @@ npm run db:generate
 npm run db:seed
 npm run typecheck
 npm run lint
+npm run check
+npm run lint:eslint
+npm run format
 npm run test:logic
 npm run build
 ```
 
+O lint do dia a dia é o [Biome](https://biomejs.dev) (`biome.json`). `npm run lint` roda as regras; `npm run check` inclui formatação e organização de imports; `npm run format` aplica o que for seguro. O repositório ainda não foi reformatado de uma vez: o gancho de commit formata só os arquivos que entram no stage. Regras de acessibilidade, `useExhaustiveDependencies` e `noArrayIndexKey` ficam como aviso para o código de UI que já existe não travar o commit; o relatório continua visível. O ESLint do Next continua em `npm run lint:eslint`. O editor usa o Biome ao salvar (`.vscode/settings.json`, extensão Biome).
+
+O Husky instala os ganchos no `npm install` (`prepare`). No commit, `biome check --write --staged` formata e corrige só o que está staged. No push, `npm run typecheck` precisa passar. A suíte Jest não entra no gancho: `npm test` e `npm run test:logic` continuam manuais.
+
 Os testes automatizados rodam com `npm test` (Jest); `npm run test:watch` inicia o modo de observação. A suíte cobre SLA, validações, histórico contextual, confiança, handoff obrigatório, senha de demonstração e transições/permissões do ciclo de conversas.
+
+A skill `/grill-me` (`.cursor/skills/grill-me`) entrevista um plano antes de implementar. Ela segue `.cursor/skills/grilling`. As duas vêm do conjunto MIT de Matt Pocock, com o ponto de entrada adaptado para o Cursor ler a skill local.
 
 ## Como o agente decide
 
@@ -115,8 +124,16 @@ As regras que não podem depender do modelo estão no servidor e têm teste: SLA
 - **Serviço de chamados no mesmo Postgres, com retry só para falha transitória de conexão.** A separação é de camada (`lib/services` / `lib/mastra`). `check_system_status` devolve `UNKNOWN` porque não há monitoramento, e isso não simula o chamado legado fora do ar.
 - **Login de exemplo aceita qualquer senha só fora de produção.** Em produção vale o hash.
 
+## Deploy
+
+A aplicação está publicada na Vercel: [https://nexoassist-five.vercel.app/](https://nexoassist-five.vercel.app/).
+
+Foi um deploy padrão do Next.js App Router: o repositório ligado ao projeto na Vercel, build com `npm run build`, e as variáveis do `.env.example` configuradas no painel (Production). `DATABASE_URL`, `SESSION_SECRET` e `GOOGLE_GENERATIVE_AI_API_KEY` ficam só no servidor; no browser entram apenas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `NEXT_PUBLIC_SITE_URL` apontando para o domínio do deploy. Em produção o atalho de “qualquer senha” nas contas demo fica desligado: vale o hash, e o seed exige `DEMO_USER_PASSWORD` com pelo menos 12 caracteres. O schema e o seed do Postgres do Supabase rodam fora do build (`db:push` / migrations e `db:seed`), para o deploy não depender de acesso administrativo ao banco na hora do build.
+
+Para limitar custo e abuso no ambiente público: a chave Gemini nunca vai para o client; o agente só roda com sessão autenticada e conversa em `BOT_ACTIVE`; cada conversa tem teto de 30 mensagens; e a cota/billing do projeto Gemini no Google AI Studio continua sendo o freio externo. Contas demo de produção não devem circular fora da avaliação.
+
 ## Com mais tempo
 
-Testes de integração com PostgreSQL, duplicata semântica, guarda de assunto fora de TI antes de abrir chamado, e deploy com cota no Gemini para limitar custo. A ausência de deploy não faz parte do critério mínimo do desafio.
+Testes de integração com PostgreSQL, duplicata semântica, guarda de assunto fora de TI antes de abrir chamado, e cota/rate-limit mais fina no endpoint do Gemini no próprio app.
 
-O console do analista atualiza a fila e o chat por **polling autorizado** (foco/intervalo), permite assumir/devolver/encerrar conversa e enviar mensagens identificadas pelo analista atribuído. A timeline mostra divisores `SYSTEM` de transferência, assume, devolução e encerramento; o histórico é refetchado após qualquer ação. O aside de chamados mostra descrição, prioridade, preview e o botão “Ver todos os chamados...” quando há mais do que o recorte. Detalhes de confiança e justificativa ficam no bloco “Decisão do agente”, acima das respostas. Nunca use credenciais demo de produção, não exponha chaves de serviço e limite o consumo do endpoint Gemini no deploy.
+O console do analista atualiza a fila e o chat por **polling autorizado** (foco/intervalo), permite assumir/devolver/encerrar conversa e enviar mensagens identificadas pelo analista atribuído. A timeline mostra divisores `SYSTEM` de transferência, assume, devolução e encerramento; o histórico é refetchado após qualquer ação. O aside de chamados mostra descrição, prioridade, preview e o botão “Ver todos os chamados...” quando há mais do que o recorte. Detalhes de confiança e justificativa ficam no bloco “Decisão do agente”, acima das respostas.

@@ -46,7 +46,7 @@ export function AnalystSidebar({
     >
       <SidebarHeader className="items-center px-2 pt-4">
         <Link
-          href="/analyst"
+          href="/analista"
           aria-label="Nexo Assist, console do analista"
           className="flex size-9 items-center justify-center"
         >

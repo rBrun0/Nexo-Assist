@@ -58,7 +58,7 @@ export function EmployeeSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={!isProfilePage}
-              render={<Link href="/employee/atendimento" />}
+              render={<Link href="/servicedesk/atendimento" />}
               className="h-10 gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 data-[active=true]:bg-sidebar-accent data-[active=true]:text-brand-nav-active data-[active=true]:shadow-none"
             >
               <MessageSquare className="size-[17px]" />
@@ -68,7 +68,7 @@ export function EmployeeSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               isActive={isProfilePage}
-              render={<Link href="/employee/perfil" />}
+              render={<Link href="/servicedesk/perfil" />}
               className="h-10 gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-600 data-[active=true]:bg-sidebar-accent data-[active=true]:text-brand-nav-active data-[active=true]:shadow-none"
             >
               <UserRound className="size-[17px]" />

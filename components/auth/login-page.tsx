@@ -38,7 +38,17 @@ export function LoginPage({
         <div className="absolute right-10 bottom-16 size-64 rounded-full border border-white/10" /> */}
 
         <div className="relative z-10 flex items-center gap-2.5 text-lg font-bold tracking-tight">
-          <NexoMark size={24} priority className="size-9" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- brand mark on dark panel needs white PNG without optimizer boxing */}
+          <img
+            src="/brand/logo_white.png"
+            alt="Nexo"
+            width={24}
+            height={24}
+            decoding="async"
+            fetchPriority="high"
+            className="block size-9 bg-transparent object-contain"
+            style={{ width: 24, height: 24 }}
+          />
           <span>Nexo Assist</span>
         </div>
 

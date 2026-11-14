@@ -78,6 +78,7 @@ export function EmployeeMessageList({
             messageId={isAssistantMessage ? chatMessage.id : undefined}
             thoughtHeaderLayout={isAssistantMessage ? "label-start" : "stacked"}
             alignEnd={isEmployeeMessage}
+            daySeparatorTone="muted"
           >
             {isAssistantMessage ? (
               <AssistantMessageBlocks
@@ -95,14 +96,13 @@ export function EmployeeMessageList({
               />
             ) : (
               <div
-                className={`relative rounded-xl px-4 py-2.5 ${
+                className={`w-fit max-w-full rounded-xl px-4 py-2.5 ${
                   isEmployeeMessage
-                    ? "rounded-br-sm bg-chat-user text-white"
+                    ? "ml-auto rounded-br-sm bg-chat-user text-white"
                     : "rounded-tl-md border border-slate-200 bg-white text-slate-700"
                 }`}
               >
                 <p className="whitespace-pre-wrap text-[14.5px] leading-6">
-                  {" "}
                   {/* TODO -> Definir esse tamanho de letra pra fonte padrão do chat */}
                   {chatMessage.content}
                 </p>

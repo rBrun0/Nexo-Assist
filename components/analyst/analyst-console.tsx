@@ -1,5 +1,7 @@
 "use client";
 
+import type { CSSProperties } from "react";
+
 import { AnalystChatPanel } from "@/components/analyst/analyst-chat-panel";
 import { AnalystQueuePanel } from "@/components/analyst/analyst-queue-panel";
 import { AnalystSidebar } from "@/components/analyst/analyst-sidebar";
@@ -26,7 +28,15 @@ export function AnalystConsole({
   });
 
   return (
-    <SidebarProvider defaultOpen={false} className="min-h-svh">
+    <SidebarProvider
+      defaultOpen={false}
+      className="min-h-svh"
+      style={
+        {
+          "--sidebar-width-icon": "3.5rem",
+        } as CSSProperties
+      }
+    >
       <AnalystSidebar
         currentAnalystName={currentAnalystName}
         conversationsWithUnread={consoleState.conversationsWithUnread}

@@ -3,18 +3,73 @@ import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
+const SUCCESS = "#00BD6B"
+const PRIMARY = "#0285F7"
+const CYAN = "#06B6D4"
+const WARNING = "#F5A300"
+const MUTED = "#94A3B8"
+const ROSE = "#F43F5E"
+
+/** Aliases semânticos → mesma hex. Lookup em minúsculas em generatePastelColors. */
 const knownColors: Record<string, string> = {
-  active: "#00BD6B",
-  positive: "#00BD6B",
-  online: "#00BD6B",
-  success: "#00BD6B",
-  green: "#00BD6B",
-  primary: "#0285F7",
-  blue: "#0285F7",
-  cyan: "#06B6D4",
-  warning: "#F5A300",
-  amber: "#F5A300",
-  muted: "#94A3B8",
+  // Success / confiança alta / resolvido
+  active: SUCCESS,
+  positive: SUCCESS,
+  online: SUCCESS,
+  success: SUCCESS,
+  green: SUCCESS,
+  high: SUCCESS,
+  alto: SUCCESS,
+  resolved: SUCCESS,
+  resolvido: SUCCESS,
+  approved: SUCCESS,
+  aprovado: SUCCESS,
+  bot_active: SUCCESS,
+  // Warning / confiança média / fila humana
+  warning: WARNING,
+  amber: WARNING,
+  medium: WARNING,
+  médio: WARNING,
+  medio: WARNING,
+  waiting_human: WARNING,
+  human_active: WARNING,
+  waiting_analyst: WARNING,
+  "aguardando analista": WARNING,
+  "agente pausado": WARNING,
+  alta: WARNING,
+  média: WARNING,
+  media: WARNING,
+  // Primary / aberto / suporte
+  primary: PRIMARY,
+  blue: PRIMARY,
+  open: PRIMARY,
+  aberto: PRIMARY,
+  in_progress: PRIMARY,
+  "em andamento": PRIMARY,
+  "suporte n1": PRIMARY,
+  "suporte n2": PRIMARY,
+  "suporte n3": PRIMARY,
+  "coordenação de service desk": PRIMARY,
+  "coordenacao de service desk": PRIMARY,
+  cyan: CYAN,
+  // Muted / prioridade baixa / encerrado
+  muted: MUTED,
+  baixa: MUTED,
+  closed: MUTED,
+  fechado: MUTED,
+  "conversa encerrada": MUTED,
+  encerrada: MUTED,
+  // Rose / confiança baixa / crítico
+  low: ROSE,
+  baixo: ROSE,
+  critical: ROSE,
+  crítica: ROSE,
+  critica: ROSE,
+  danger: ROSE,
+  error: ROSE,
+  destructive: ROSE,
+  rose: ROSE,
+  red: ROSE,
 }
 
 function getHueFromHex(hex: string) {

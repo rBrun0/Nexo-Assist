@@ -23,6 +23,7 @@ export function ChatMessageFrame({
   thoughtHeaderLayout = "stacked",
   messageId,
   alignEnd,
+  daySeparatorTone = "white",
   children,
 }: {
   createdAt: string;
@@ -35,6 +36,7 @@ export function ChatMessageFrame({
   thoughtHeaderLayout?: "stacked" | "inline" | "label-start";
   messageId?: string;
   alignEnd: boolean;
+  daySeparatorTone?: "white" | "muted";
   children: ReactNode;
 }) {
   const dayKey = getChatDayKey(createdAt);
@@ -54,7 +56,10 @@ export function ChatMessageFrame({
       transition={{ duration: 0.18, ease: "easeOut" }}
     >
       {showDaySeparator ? (
-        <ChatDaySeparator label={formatChatDayLabel(createdAt)} />
+        <ChatDaySeparator
+          label={formatChatDayLabel(createdAt)}
+          tone={daySeparatorTone}
+        />
       ) : null}
       {isSystem ? (
         <ChatEventDivider label={systemLabel} createdAt={createdAt} />
