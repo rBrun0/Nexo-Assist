@@ -6,11 +6,11 @@ Aplicação fullstack de Service Desk de TI para o desafio Beyond the Bytes.
 
 ### Demo (avaliação)
 
-| Papel | E-mail | Onde entra |
-| --- | --- | --- |
+| Papel       | E-mail                     | Onde entra                                                   |
+| ----------- | -------------------------- | ------------------------------------------------------------ |
 | Funcionário | `carlos.silva@nexo.com.br` | `/servicedesk/atendimento` (perfil em `/servicedesk/perfil`) |
-| Funcionário | `ana.souza@nexo.com.br` | idem |
-| Analista | `analista.ti@nexo.com.br` | `/analista` |
+| Funcionário | `ana.souza@nexo.com.br`    | idem                                                         |
+| Analista    | `analista.ti@nexo.com.br`  | `/analista`                                                  |
 
 - **Local (`npm run dev`):** qualquer senha não vazia (pedido do PRD para as contas de exemplo). A tela de login lista esses e-mails.
 - **Produção (Vercel):** vale o hash do seed (`DEMO_USER_PASSWORD`, mínimo 12 caracteres). Não publique essa senha no repositório; na avaliação, use a senha combinada com o time ou rode o projeto localmente.

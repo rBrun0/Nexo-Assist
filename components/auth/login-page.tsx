@@ -14,6 +14,14 @@ import { useOnlineAnalystsCount } from "@/hooks/use-online-analysts-count";
 
 const tickerClassName = "text-white tracking-normal";
 
+/** 1170 s → 1,17 (duas casas, milhares), para o ticker ficar no ritmo do “8 s” do design. */
+function firstResponseTicker(seconds: number) {
+  if (seconds >= 1000) {
+    return { value: Math.round((seconds / 1000) * 100) / 100, decimalPlaces: 2 };
+  }
+  return { value: seconds, decimalPlaces: 0 };
+}
+
 export function LoginPage({
   resolvedWithoutQueuePercent,
   averageFirstResponseSeconds,
@@ -26,6 +34,7 @@ export function LoginPage({
   const { register, handleSubmit, errors, formMessage, isSubmitting, rememberMe, setRememberMe } =
     useLoginForm();
   const onlineAnalystsCount = useOnlineAnalystsCount();
+  const firstResponse = firstResponseTicker(averageFirstResponseSeconds);
 
   return (
     <main className="relative grid h-svh overflow-hidden bg-white lg:grid-cols-2">
@@ -92,7 +101,12 @@ export function LoginPage({
           <div className="mt-5 grid grid-cols-3 divide-x divide-white/10">
             <div className="px-3 text-center font-newsreader first:pl-0 last:pr-0">
               <p className="pl-6 text-left text-3xl text-white">
-                <NumberTicker value={averageFirstResponseSeconds} className={tickerClassName} /> s
+                <NumberTicker
+                  value={firstResponse.value}
+                  decimalPlaces={firstResponse.decimalPlaces}
+                  className={tickerClassName}
+                />{" "}
+                s
               </p>
               <p className="mt-1 text-center text-[10px] leading-4 text-zinc-400 sm:text-xs">
                 Primeira resposta, em média
