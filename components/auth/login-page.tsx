@@ -25,11 +25,6 @@ export function LoginPage({
   return (
     <main className="relative grid h-svh overflow-hidden bg-white lg:grid-cols-2">
       <section className="relative hidden h-full overflow-hidden bg-background-login px-12 py-10 text-white lg:flex lg:flex-col xl:px-16">
-        {/* <div className="absolute inset-0" />
-        <div className="absolute -top-32 -right-36 size-[520px] rounded-full border border-white/10" />
-        <div className="absolute -top-12 -right-16 size-[360px] rounded-full border border-white/10" />
-        <div className="absolute right-10 bottom-16 size-64 rounded-full border border-white/10" /> */}
-
         <div className="relative z-10 flex items-center gap-2.5 text-lg font-bold tracking-tight">
           {/* eslint-disable-next-line @next/next/no-img-element -- brand mark on dark panel needs white PNG without optimizer boxing */}
           <img
