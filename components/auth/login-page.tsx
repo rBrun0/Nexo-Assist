@@ -7,15 +7,20 @@ import { FormInputField, PasswordInputField } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { NumberTicker } from "@/components/ui/number-ticker";
 import { Separator } from "@/components/ui/separator";
 import { useLoginForm } from "@/hooks/use-login-form";
 import { useOnlineAnalystsCount } from "@/hooks/use-online-analysts-count";
 
+const tickerClassName = "text-white tracking-normal";
+
 export function LoginPage({
   resolvedWithoutQueuePercent,
+  averageFirstResponseSeconds,
   showDemoAccounts = false,
 }: {
   resolvedWithoutQueuePercent: number;
+  averageFirstResponseSeconds: number;
   showDemoAccounts?: boolean;
 }) {
   const { register, handleSubmit, errors, formMessage, isSubmitting, rememberMe, setRememberMe } =
@@ -46,55 +51,64 @@ export function LoginPage({
             <span className="text-nowrap">Seu problema de TI, resolvido</span> <br />{" "}
             <span>em uma conversa.</span>
           </h1>
-          <p className="mt-5 max-w-md text-sm leading-6 text-zinc-400">
+          <p className="mt-4 max-w-md text-sm leading-6 text-zinc-400">
             Descreva o que está acontecendo. O assistente consulta seus <br />
             chamados, busca na central de ajuda e chama um analista quando <br />
             precisa.
           </p>
 
-          <div className="mt-5 ml-auto max-w-md rounded-2xl border border-white/15 bg-background-login brightness-120 px-5 py-3 shadow-2xl shadow-slate-950/10 backdrop-blur-md">
-            <div className="mt-5 ml-auto w-fit rounded-xl rounded-tl-sm bg-white px-4 py-2 text-xs leading-5 text-slate-800 shadow-sm font-medium">
+          <div className="mt-5 ml-auto max-w-md rounded-2xl border border-white/10 bg-white/5 px-5 py-4 shadow-2xl shadow-slate-950/10 backdrop-blur-md flex flex-col justify-cente">
+            <div className="ml-auto w-fit rounded-xl rounded-tl-sm bg-white px-4 py-2 text-xs leading-5 text-slate-800 shadow-sm font-medium">
               Meu notebook não conecta na VPN. Erro 809
             </div>
             <div className="mt-7 flex w-full flex-col relative">
               <div className="absolute -top-5 left-2 text-xs">
-                <span className="text-white/80">Nexo assist</span>{" "}
-                <span className="text-zinc-400">consultou seus chamados</span>{" "}
-                <span className="text-zinc-400">-</span>{" "}
-                <span className="text-zinc-400">criou um chamado</span>
+                <span className="text-white/90">Nexo assist</span>{" "}
+                <span className="text-white/45">consultou seus chamados</span>{" "}
+                <span className="text-white/45">-</span>{" "}
+                <span className="text-white/45">criou um chamado</span>
               </div>
-              <div className="w-fit rounded-xl rounded-tl-sm bg-gray-800 px-4 py-2 text-xs leading-5 text-white shadow-sm">
+              <div className="w-fit rounded-xl rounded-tl-sm bg-white/8 px-4 py-2 text-xs leading-5 text-white/80 shadow-sm">
                 Pronto. Abri o chamado com prioridade alta. Um analista fala com você em até 4h
                 úteis.
               </div>
-              <div className="flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-1 text-xs leading-5 text-slate-700 shadow-sm">
+              <div className="mt-2 flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-1 text-xs leading-5 text-slate-700 shadow-sm">
                 <span className="rounded-full bg-orange-300 p-1" />{" "}
                 <span>
-                  <b>INC-20517</b> Rede e VPN - Alta - em até 4 h
+                  <b>INC-20517</b>
+                  <span className="text-[#5C6573]">
+                    {" "}
+                    {/* TODO -> Criar variavel ink-3 para cor #5C6573 */}
+                    Rede e VPN - Alta - em até 4 h
+                  </span>
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="relative z-10 mb-6 max-w-xl">
-          <Separator className="bg-white/10" />
+        <div className="relative z-10 mb-6 max-w-xl lg:py-6 mx-auto">
+          <Separator className="bg-white/10 lg:scale-x-140" />
           <div className="mt-5 grid grid-cols-3 divide-x divide-white/10">
             <div className="px-3 text-center font-newsreader first:pl-0 last:pr-0">
-              <p className="pl-6 text-left text-3xl text-white">8 s</p>
+              <p className="pl-6 text-left text-3xl text-white">
+                <NumberTicker value={averageFirstResponseSeconds} className={tickerClassName} /> s
+              </p>
               <p className="mt-1 text-center text-[10px] leading-4 text-zinc-400 sm:text-xs">
                 Primeira resposta, em média
               </p>
             </div>
             <div className="px-3 text-center font-newsreader first:pl-0 last:pr-0">
-              <p className="pl-11 text-left text-3xl text-white">{resolvedWithoutQueuePercent}%</p>
+              <p className="pl-11 text-left text-3xl text-white">
+                <NumberTicker value={resolvedWithoutQueuePercent} className={tickerClassName} />%
+              </p>
               <p className="mt-1 text-[10px] leading-4 text-zinc-400 sm:text-xs">
                 Resolvidos sem fila
               </p>
             </div>
             <div className="px-3 text-center font-newsreader first:pl-0 last:pr-0">
               <p className="flex items-center gap-2 pl-9 text-left text-3xl text-white">
-                <span>{onlineAnalystsCount}</span>
+                <NumberTicker value={onlineAnalystsCount} className={tickerClassName} />
                 <span className="rounded-full bg-green-500 p-1" />
               </p>
               <p className="mt-1 text-[10px] leading-4 text-zinc-400 sm:text-xs">
@@ -110,7 +124,7 @@ export function LoginPage({
       </section>
 
       <section className="relative flex h-full min-h-0 flex-col overflow-hidden px-6 pt-14 pb-14 sm:px-10 lg:px-12">
-        <p className="absolute top-4 right-4 z-20 max-w-[min(100%-2rem,18rem)] text-right text-[11px] leading-4 sm:top-6 sm:right-6 sm:text-xs text-zinc-600">
+        <p className="absolute top-4 lg:top-8 right-4 lg:right-16 z-20 max-w-[min(100%-2rem,18rem)] lg:max-w-none text-right text-[11px] leading-4 sm:top-6 sm:right-6 sm:text-xs lg:text-sm text-zinc-600">
           Problemas para entrar?{" "}
           <span className="font-medium text-brand-action">Ligue no ramal 4000</span>
         </p>
