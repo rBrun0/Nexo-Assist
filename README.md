@@ -2,6 +2,21 @@
 
 Aplicação fullstack de Service Desk de TI para o desafio Beyond the Bytes.
 
+**Deploy:** [https://nexoassist-five.vercel.app/](https://nexoassist-five.vercel.app/)
+
+### Demo (avaliação)
+
+| Papel | E-mail | Onde entra |
+| --- | --- | --- |
+| Funcionário | `carlos.silva@nexo.com.br` | `/servicedesk/atendimento` (perfil em `/servicedesk/perfil`) |
+| Funcionário | `ana.souza@nexo.com.br` | idem |
+| Analista | `analista.ti@nexo.com.br` | `/analista` |
+
+- **Local (`npm run dev`):** qualquer senha não vazia (pedido do PRD para as contas de exemplo). A tela de login lista esses e-mails.
+- **Produção (Vercel):** vale o hash do seed (`DEMO_USER_PASSWORD`, mínimo 12 caracteres). Não publique essa senha no repositório; na avaliação, use a senha combinada com o time ou rode o projeto localmente.
+
+O login redireciona pelo papel. URLs antigas (`/employee/...`, `/analyst`) redirecionam para as rotas acima.
+
 ## Stack e arquitetura
 
 - **Next.js 16 App Router + TypeScript**: páginas protegidas por papel, API Routes e UI.
@@ -45,7 +60,7 @@ O seed cria/sincroniza no Prisma as contas `carlos.silva@nexo.com.br`, `ana.souz
 - A autenticação local não gera identidade Supabase Auth. Por isso `ChatSession`/`ChatMessage` têm RLS negando `anon`/`authenticated` (migration `20261108140000_harden_chat_rls`): o browser não lê conversas pela anon key. O Prisma segue via `DATABASE_URL`. Realtime com conteúdo de chat só deve voltar após JWT customizado no Supabase alinhado ao `User.id`.
 - A confiança começa em 100 e só cai com evidência de tool, nunca sobe depois de uma busca sem artigos. Central de Ajuda com resultados: 85. Sem resultados: 40, e a conversa é encaminhada. Lista de chamados do próprio funcionário: 88, ou 72 se não houver aberto. Status operacional sem integração: no máximo 60. Rascunho comum: 84; rascunho crítico: 70. Resposta sem nenhuma tool: 62. Abaixo de 50 o servidor encaminha mesmo que o modelo não chame a tool. Uma classificação Mastra com schema Zod devolve intenção, prioridade, confiança e justificativa; o número exibido é o menor entre essa confiança e a evidência das tools. Confiança, motivo e início do handoff ficam em `ChatSession`; a fila do analista exibe esses dados e o tempo aguardando. Acima de cada resposta do agente, a trilha mostra as ações (“consultou seus chamados”) e o bloco “Decisão do agente” abre confiança e justificativa pública. Não há cadeia privada de pensamento nesse bloco.
 - Presença online (`use-online-presence`) usa Supabase Realtime Presence em canal público por conversa (`presence:session:{sessionId}`), só com metadados efêmeros (`id`, `name`, `role`). Não lê `ChatSession`/`ChatMessage`. O lobby `presence:analysts` marca analistas com a aba do console aberta e alimenta a contagem pública no login; o login só observa o canal (sem `track`). Realtime com conteúdo de chat continua dependendo de JWT customizado.
-- No login, “Resolvidos sem fila” é a % de `ChatSession` `CLOSED` com `handoffAt` nulo; “Primeira resposta, em média” permanece estática por enquanto.
+- No login, “Resolvidos sem fila” é a % de `ChatSession` `CLOSED` com `handoffAt` nulo. “Primeira resposta, em média” é o tempo em segundos entre a primeira mensagem do funcionário e a primeira do assistente, nas até 500 sessões mais recentes (agregado no Postgres, cache de 2 min). “Analistas online agora” vem do Presence do lobby.
 
 ## Chat e ferramentas do agente
 
@@ -128,7 +143,7 @@ As regras que não podem depender do modelo estão no servidor e têm teste: SLA
 
 A aplicação está publicada na Vercel: [https://nexoassist-five.vercel.app/](https://nexoassist-five.vercel.app/).
 
-Foi um deploy padrão do Next.js App Router: o repositório ligado ao projeto na Vercel, build com `npm run build`, e as variáveis do `.env.example` configuradas no painel (Production). `DATABASE_URL`, `SESSION_SECRET` e `GOOGLE_GENERATIVE_AI_API_KEY` ficam só no servidor; no browser entram apenas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `NEXT_PUBLIC_SITE_URL` apontando para o domínio do deploy. Em produção o atalho de “qualquer senha” nas contas demo fica desligado: vale o hash, e o seed exige `DEMO_USER_PASSWORD` com pelo menos 12 caracteres. O schema e o seed do Postgres do Supabase rodam fora do build (`db:push` / migrations e `db:seed`), para o deploy não depender de acesso administrativo ao banco na hora do build.
+Foi um deploy padrão do Next.js App Router: o repositório ligado ao projeto na Vercel, build com `npm run build`, e as variáveis do `.env.example` configuradas no painel (Production). `DATABASE_URL`, `SESSION_SECRET` e `GOOGLE_GENERATIVE_AI_API_KEY` ficam só no servidor; no browser entram apenas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `NEXT_PUBLIC_SITE_URL` apontando para o domínio do deploy. Na Vercel, `DATABASE_URL` deve ser a string do **Transaction pooler** do Supabase (`postgres.<ref>` + host `*.pooler.supabase.com`), não `db.<ref>.supabase.co:5432` — as funções só saem em IPv4. Em produção o atalho de “qualquer senha” nas contas demo fica desligado: vale o hash, e o seed exige `DEMO_USER_PASSWORD` com pelo menos 12 caracteres. O schema e o seed do Postgres do Supabase rodam fora do build (`db:push` / migrations e `db:seed`), para o deploy não depender de acesso administrativo ao banco na hora do build.
 
 Para limitar custo e abuso no ambiente público: a chave Gemini nunca vai para o client; o agente só roda com sessão autenticada e conversa em `BOT_ACTIVE`; cada conversa tem teto de 30 mensagens; e a cota/billing do projeto Gemini no Google AI Studio continua sendo o freio externo. Contas demo de produção não devem circular fora da avaliação.
 
