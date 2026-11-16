@@ -13,7 +13,7 @@ Aplicação fullstack de Service Desk de TI para o desafio Beyond the Bytes.
 | Analista    | `analista.ti@nexo.com.br`  | `/analista`                                                  |
 
 - **Local (`npm run dev`):** qualquer senha não vazia (pedido do PRD para as contas de exemplo). A tela de login lista esses e-mails.
-- **Produção (Vercel):** vale o hash do seed (`DEMO_USER_PASSWORD`, mínimo 12 caracteres). Não publique essa senha no repositório; na avaliação, use a senha combinada com o time ou rode o projeto localmente.
+- **Produção (Vercel):** o atalho de qualquer senha está desligado. Use os e-mails acima com a senha `123456` (hash gravado no seed / `DEMO_USER_PASSWORD` deste ambiente de avaliação).
 
 O login redireciona pelo papel. URLs antigas (`/employee/...`, `/analyst`) redirecionam para as rotas acima.
 
@@ -48,7 +48,7 @@ Requisitos: Node.js 20+ e um projeto Supabase com PostgreSQL habilitado.
 
 5. Inicie o Next.js com `npm run dev`.
 
-O seed cria/sincroniza no Prisma as contas `carlos.silva@nexo.com.br`, `ana.souza@nexo.com.br`, `analista.ti@nexo.com.br` e as demais contas de `lib/auth/demo-accounts.ts`, ~10 artigos da Central de Ajuda e chamados de exemplo do Anexo B (`INC-20311` vencido, `REQ-10442` aprovado, `INC-20150` resolvido de outro funcionário, mais um aberto da Ana). Fora de produção, essas contas aceitam qualquer senha não vazia (o PRD pede isso para os dados de exemplo) e a tela de login lista os três e-mails principais. A senha gravada no seed continua `123456`, ou `DEMO_USER_PASSWORD` se configurada, sempre como hash; cada execução do seed redefine esse hash. Em produção o atalho de qualquer senha fica desligado e o seed exige `DEMO_USER_PASSWORD` com pelo menos 12 caracteres. A role vem do registro `User` do Prisma; nunca é aceita do navegador.
+O seed cria/sincroniza no Prisma as contas `carlos.silva@nexo.com.br`, `ana.souza@nexo.com.br`, `analista.ti@nexo.com.br` e as demais contas de `lib/auth/demo-accounts.ts`, ~10 artigos da Central de Ajuda e chamados de exemplo do Anexo B (`INC-20311` vencido, `REQ-10442` aprovado, `INC-20150` resolvido de outro funcionário, mais um aberto da Ana). Fora de produção, essas contas aceitam qualquer senha não vazia (o PRD pede isso para os dados de exemplo) e a tela de login lista os três e-mails principais. A senha gravada no seed continua `123456`, ou `DEMO_USER_PASSWORD` se configurada, sempre como hash; cada execução do seed redefine esse hash. Em produção o atalho de qualquer senha fica desligado: no deploy de avaliação a senha das contas demo é `123456`. A role vem do registro `User` do Prisma; nunca é aceita do navegador.
 
 ## Autenticação, dados e permissões
 
@@ -143,7 +143,7 @@ As regras que não podem depender do modelo estão no servidor e têm teste: SLA
 
 A aplicação está publicada na Vercel: [https://nexoassist-five.vercel.app/](https://nexoassist-five.vercel.app/).
 
-Foi um deploy padrão do Next.js App Router: o repositório ligado ao projeto na Vercel, build com `npm run build`, e as variáveis do `.env.example` configuradas no painel (Production). `DATABASE_URL`, `SESSION_SECRET` e `GOOGLE_GENERATIVE_AI_API_KEY` ficam só no servidor; no browser entram apenas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `NEXT_PUBLIC_SITE_URL` apontando para o domínio do deploy. Na Vercel, `DATABASE_URL` deve ser a string do **Transaction pooler** do Supabase (`postgres.<ref>` + host `*.pooler.supabase.com`), não `db.<ref>.supabase.co:5432` — as funções só saem em IPv4. Em produção o atalho de “qualquer senha” nas contas demo fica desligado: vale o hash, e o seed exige `DEMO_USER_PASSWORD` com pelo menos 12 caracteres. O schema e o seed do Postgres do Supabase rodam fora do build (`db:push` / migrations e `db:seed`), para o deploy não depender de acesso administrativo ao banco na hora do build.
+Foi um deploy padrão do Next.js App Router: o repositório ligado ao projeto na Vercel, build com `npm run build`, e as variáveis do `.env.example` configuradas no painel (Production). `DATABASE_URL`, `SESSION_SECRET` e `GOOGLE_GENERATIVE_AI_API_KEY` ficam só no servidor; no browser entram apenas `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` e `NEXT_PUBLIC_SITE_URL` apontando para o domínio do deploy. Na Vercel, `DATABASE_URL` deve ser a string do **Transaction pooler** do Supabase (`postgres.<ref>` + host `*.pooler.supabase.com`), não `db.<ref>.supabase.co:5432` — as funções só saem em IPv4. Em produção o atalho de “qualquer senha” nas contas demo fica desligado: vale o hash. Neste deploy de avaliação a senha é `123456`. O schema e o seed do Postgres do Supabase rodam fora do build (`db:push` / migrations e `db:seed`), para o deploy não depender de acesso administrativo ao banco na hora do build.
 
 Para limitar custo e abuso no ambiente público: a chave Gemini nunca vai para o client; o agente só roda com sessão autenticada e conversa em `BOT_ACTIVE`; cada conversa tem teto de 30 mensagens; e a cota/billing do projeto Gemini no Google AI Studio continua sendo o freio externo. Contas demo de produção não devem circular fora da avaliação.
 
