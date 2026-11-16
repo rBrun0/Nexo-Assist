@@ -8,6 +8,7 @@ export function TicketDraftTurn({
   content,
   createdAt,
   draft,
+  workflowRunId,
   confirmed = false,
   cancelled = false,
   disabled = false,
@@ -18,6 +19,7 @@ export function TicketDraftTurn({
   content: string;
   createdAt: string;
   draft: TicketDraftPresentation | Record<string, unknown>;
+  workflowRunId?: string;
   confirmed?: boolean;
   cancelled?: boolean;
   disabled?: boolean;
@@ -30,6 +32,7 @@ export function TicketDraftTurn({
       <AssistantTextBubble content={content} createdAt={createdAt} />
       <TicketDraftCard
         draft={draft}
+        workflowRunId={workflowRunId}
         confirmed={confirmed}
         cancelled={cancelled}
         disabled={disabled}

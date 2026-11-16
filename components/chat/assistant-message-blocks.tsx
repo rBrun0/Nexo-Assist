@@ -10,9 +10,9 @@ import { TicketChoiceTurn } from "@/components/chat/turns/ticket-choice-turn";
 import { TicketDraftTurn } from "@/components/chat/turns/ticket-draft-turn";
 import { TicketStatusTurn } from "@/components/chat/turns/ticket-status-turn";
 import {
-  parseAssistantMessageMetadata,
   type AssistantMessageMetadata,
   type ChatOption,
+  parseAssistantMessageMetadata,
   type TicketChoiceIntent,
   type TicketChoiceItem,
 } from "@/lib/validations/chat-metadata";
@@ -30,19 +30,14 @@ type TurnContext = {
   createdAt: string;
   controlsDisabled: boolean;
   onOptionSelect: (option: ChatOption) => void;
-  onTicketSelect: (
-    ticket: TicketChoiceItem,
-    intent: TicketChoiceIntent,
-  ) => void;
+  onTicketSelect: (ticket: TicketChoiceItem, intent: TicketChoiceIntent) => void;
   onArticleSelect: (article: { title: string; category?: string }) => void;
   onConfirmDraft: () => void;
   onEditDraft: () => void;
   onCancelDraft: () => void;
 };
 
-function getMetadataOptions(
-  parsed: AssistantMessageMetadata | null,
-): ChatOption[] {
+function getMetadataOptions(parsed: AssistantMessageMetadata | null): ChatOption[] {
   if (!parsed || !("options" in parsed) || !Array.isArray(parsed.options)) {
     return [];
   }
@@ -94,6 +89,7 @@ const ASSISTANT_TURN_BY_KIND: {
         content={ctx.content}
         createdAt={ctx.createdAt}
         draft={metadata.draft}
+        workflowRunId={metadata.workflowRunId}
         confirmed={confirmed}
         cancelled={cancelled}
         disabled={ctx.controlsDisabled || confirmed || cancelled}
@@ -138,10 +134,7 @@ const ASSISTANT_TURN_BY_KIND: {
   ),
 };
 
-function renderAssistantTurn(
-  parsed: AssistantMessageMetadata,
-  ctx: TurnContext,
-): ReactNode | null {
+function renderAssistantTurn(parsed: AssistantMessageMetadata, ctx: TurnContext): ReactNode | null {
   if (!("kind" in parsed) || !isAssistantTurnKind(parsed.kind)) return null;
 
   // Switch em parsed.kind estreita a union; o mapa tipado concentra o JSX.
@@ -180,10 +173,7 @@ export function AssistantMessageBlocks({
   interactive?: boolean;
   disabled?: boolean;
   onOptionSelect: (option: ChatOption) => void;
-  onTicketSelect: (
-    ticket: TicketChoiceItem,
-    intent: TicketChoiceIntent,
-  ) => void;
+  onTicketSelect: (ticket: TicketChoiceItem, intent: TicketChoiceIntent) => void;
   onArticleSelect: (article: { title: string; category?: string }) => void;
   onConfirmDraft: () => void;
   onEditDraft: () => void;
@@ -220,10 +210,7 @@ export function AssistantMessageBlocks({
   );
 }
 
-export function buildTicketSelectionMessage(
-  ticket: TicketChoiceItem,
-  intent: TicketChoiceIntent,
-) {
+export function buildTicketSelectionMessage(ticket: TicketChoiceItem, intent: TicketChoiceIntent) {
   if (intent === "add_info") {
     return {
       mode: "compose" as const,

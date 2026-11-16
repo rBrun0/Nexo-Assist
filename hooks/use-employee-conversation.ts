@@ -58,6 +58,8 @@ export function useEmployeeConversation({
   const [endedNotice, setEndedNotice] = useState(false);
   const [pendingLocalMessage, setPendingLocalMessage] = useState<ChatHistoryMessage | null>(null);
   const [isFinalizingAssistantTurn, setIsFinalizingAssistantTurn] = useState(false);
+  const [isMutatingDraft, setIsMutatingDraft] = useState(false);
+  const isMutatingDraftRef = useRef(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -459,27 +461,43 @@ export function useEmployeeConversation({
   }
 
   async function confirmTicketDraft(draftMessageId: string) {
+    if (isMutatingDraftRef.current) return;
+    isMutatingDraftRef.current = true;
+    setIsMutatingDraft(true);
     setConversationError("");
-    const result = await confirmTicketDraftRequest(draftMessageId);
-    if (!result.success) {
-      console.error("Falha ao confirmar rascunho de chamado:", result.error);
-      setConversationError(result.error.message);
-      return;
+    try {
+      const result = await confirmTicketDraftRequest(draftMessageId);
+      if (!result.success) {
+        console.error("Falha ao confirmar rascunho de chamado:", result.error);
+        setConversationError(result.error.message);
+        return;
+      }
+      syncConversationMessages(result.data);
+      await loadConversation();
+    } finally {
+      isMutatingDraftRef.current = false;
+      setIsMutatingDraft(false);
     }
-    syncConversationMessages(result.data);
-    await loadConversation();
   }
 
   async function cancelTicketDraftAction(draftMessageId: string) {
+    if (isMutatingDraftRef.current) return;
+    isMutatingDraftRef.current = true;
+    setIsMutatingDraft(true);
     setConversationError("");
-    const result = await cancelTicketDraft(draftMessageId);
-    if (!result.success) {
-      console.error("Falha ao cancelar rascunho de chamado:", result.error);
-      setConversationError(result.error.message);
-      return;
+    try {
+      const result = await cancelTicketDraft(draftMessageId);
+      if (!result.success) {
+        console.error("Falha ao cancelar rascunho de chamado:", result.error);
+        setConversationError(result.error.message);
+        return;
+      }
+      syncConversationMessages(result.data);
+      await loadConversation();
+    } finally {
+      isMutatingDraftRef.current = false;
+      setIsMutatingDraft(false);
     }
-    syncConversationMessages(result.data);
-    await loadConversation();
   }
 
   const lastInteractiveAssistantMessageId = useMemo(() => {
@@ -574,6 +592,7 @@ export function useEmployeeConversation({
         chatStatus === "submitted" ||
         chatStatus === "streaming"),
     isRequestingAnalyst,
+    isMutatingDraft,
     isEndingConversation,
     endedNotice,
     streamedResponseText,

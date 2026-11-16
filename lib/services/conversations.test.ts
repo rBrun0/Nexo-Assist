@@ -1,22 +1,23 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ChatStatus, MessageSender, Role } from "@prisma/client";
+import { AppErrors, DomainError, HttpStatus } from "@/lib/errors";
+import { resumeOpenTicketRun } from "@/lib/mastra/resume-open-ticket";
 import { prisma } from "@/lib/prisma";
 import { createTicketForUser } from "@/lib/services/tickets";
 import {
-  createEmployeeMessage,
   cancelTicketDraft,
+  createEmployeeMessage,
   createTicketFromDraft,
+  endEmployeeConversation,
   findActiveEmployeeConversation,
   getChatHistoryForUser,
   getEmployeeConversation,
   getOrCreateEmployeeConversation,
-  endEmployeeConversation,
+  listAnalystConversations,
   performAnalystConversationAction,
   saveAssistantMessage,
   sendManualConversationMessage,
-  listAnalystConversations,
 } from "./conversations";
-import { AppErrors, DomainError, HttpStatus } from "@/lib/errors";
 
 jest.mock("server-only", () => ({}));
 jest.mock("@/lib/prisma", () => ({
@@ -47,6 +48,9 @@ jest.mock("@/lib/services/tickets", () => ({
   createTicketForUser: jest.fn(),
   transferTicketToAnalyst: jest.fn(),
 }));
+jest.mock("@/lib/mastra/resume-open-ticket", () => ({
+  resumeOpenTicketRun: jest.fn(),
+}));
 
 const transactionMock = {
   chatSession: {
@@ -69,15 +73,13 @@ const employeeId = "employee-1";
 const sessionId = "session-1";
 
 function resolveMock(mock: unknown, value: unknown) {
-  (
-    mock as { mockResolvedValue: (resolvedValue: unknown) => unknown }
-  ).mockResolvedValue(value);
+  (mock as { mockResolvedValue: (resolvedValue: unknown) => unknown }).mockResolvedValue(value);
 }
 
 function resolveMockOnce(mock: unknown, value: unknown) {
-  (
-    mock as { mockResolvedValueOnce: (resolvedValue: unknown) => unknown }
-  ).mockResolvedValueOnce(value);
+  (mock as { mockResolvedValueOnce: (resolvedValue: unknown) => unknown }).mockResolvedValueOnce(
+    value,
+  );
 }
 
 function setSession(
@@ -137,11 +139,7 @@ describe("getChatHistoryForUser", () => {
       },
     ]);
 
-    const messagesResult = await getChatHistoryForUser(
-      employeeId,
-      Role.EMPLOYEE,
-      sessionId,
-    );
+    const messagesResult = await getChatHistoryForUser(employeeId, Role.EMPLOYEE, sessionId);
 
     expect(messagesResult.success).toBe(true);
     if (!messagesResult.success) return;
@@ -179,9 +177,10 @@ describe("getChatHistoryForUser", () => {
     resolveMock(prisma.chatMessage.updateMany, { count: 1 });
     resolveMock(prisma.chatMessage.findMany, []);
 
-    await expect(
-      getChatHistoryForUser(analystId, Role.ANALYST, sessionId),
-    ).resolves.toEqual({ success: true, data: [] });
+    await expect(getChatHistoryForUser(analystId, Role.ANALYST, sessionId)).resolves.toEqual({
+      success: true,
+      data: [],
+    });
     expect(prisma.chatSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: sessionId } }),
     );
@@ -234,9 +233,7 @@ describe("getOrCreateEmployeeConversation", () => {
     const existing = { id: sessionId, status: ChatStatus.BOT_ACTIVE };
     resolveMock(prisma.chatSession.findFirst, existing);
 
-    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(
-      existing,
-    );
+    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(existing);
     expect(prisma.chatSession.create).not.toHaveBeenCalled();
   });
 
@@ -245,9 +242,7 @@ describe("getOrCreateEmployeeConversation", () => {
     const created = { id: sessionId, status: ChatStatus.BOT_ACTIVE };
     resolveMock(prisma.chatSession.create, created);
 
-    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(
-      created,
-    );
+    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(created);
     expect(prisma.chatSession.create).toHaveBeenCalledWith({
       data: { userId: employeeId },
     });
@@ -258,19 +253,13 @@ describe("getOrCreateEmployeeConversation", () => {
     const created = { id: "session-2", status: ChatStatus.BOT_ACTIVE };
     resolveMock(prisma.chatSession.create, created);
 
-    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(
-      created,
-    );
+    await expect(getOrCreateEmployeeConversation(employeeId)).resolves.toBe(created);
     expect(prisma.chatSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           userId: employeeId,
           status: {
-            in: [
-              ChatStatus.BOT_ACTIVE,
-              ChatStatus.WAITING_HUMAN,
-              ChatStatus.HUMAN_ACTIVE,
-            ],
+            in: [ChatStatus.BOT_ACTIVE, ChatStatus.WAITING_HUMAN, ChatStatus.HUMAN_ACTIVE],
           },
         },
       }),
@@ -469,11 +458,7 @@ describe("createEmployeeMessage", () => {
     resolveMock(prisma.ticket.findFirst, null);
 
     await expect(
-      createEmployeeMessage(
-        employeeId,
-        "Quero atualizar este chamado.",
-        "ticket-2",
-      ),
+      createEmployeeMessage(employeeId, "Quero atualizar este chamado.", "ticket-2"),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
     expect(prisma.chatMessage.count).not.toHaveBeenCalled();
   });
@@ -486,9 +471,10 @@ describe("createEmployeeMessage", () => {
     resolveMock(transactionMock.chatSession.findFirst, { id: sessionId });
     resolveMock(transactionMock.chatMessage.count, 29);
 
-    await expect(
-      createEmployeeMessage(employeeId, "Mensagem adicional."),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
+    await expect(createEmployeeMessage(employeeId, "Mensagem adicional.")).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
+    });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
 });
@@ -524,9 +510,9 @@ describe("saveAssistantMessage", () => {
   });
 
   it("transfere para a fila humana atomicamente com a resposta final do agente", async () => {
-    const { transferTicketToAnalyst } = jest.requireMock(
-      "@/lib/services/tickets",
-    ) as { transferTicketToAnalyst: jest.Mock };
+    const { transferTicketToAnalyst } = jest.requireMock("@/lib/services/tickets") as {
+      transferTicketToAnalyst: jest.Mock;
+    };
     resolveMock(transactionMock.chatSession.updateMany, { count: 1 });
     resolveMock(transactionMock.chatSession.findUnique, {
       ticketId: "ticket-1",
@@ -554,8 +540,7 @@ describe("saveAssistantMessage", () => {
       {
         confidenceScore: 40,
         handoffSummary: "Falha geral de acesso.",
-        handoffReason:
-          "A busca na Central de Ajuda não encontrou artigos relevantes.",
+        handoffReason: "A busca na Central de Ajuda não encontrou artigos relevantes.",
       },
     );
     expect(savedHandoff.success).toBe(true);
@@ -567,8 +552,7 @@ describe("saveAssistantMessage", () => {
           status: ChatStatus.WAITING_HUMAN,
           assignedAnalystId: null,
           handoffSummary: "Falha geral de acesso.",
-          handoffReason:
-            "A busca na Central de Ajuda não encontrou artigos relevantes.",
+          handoffReason: "A busca na Central de Ajuda não encontrou artigos relevantes.",
           handoffAt: expect.any(Date),
           confidenceScore: 40,
         }),
@@ -584,10 +568,7 @@ describe("saveAssistantMessage", () => {
         }),
       }),
     );
-    expect(transferTicketToAnalyst).toHaveBeenCalledWith(
-      "ticket-1",
-      transactionMock,
-    );
+    expect(transferTicketToAnalyst).toHaveBeenCalledWith("ticket-1", transactionMock);
   });
 
   it("não grava resposta se o estado mudou e limita o resumo de handoff", async () => {
@@ -917,12 +898,7 @@ describe("sendManualConversationMessage", () => {
     });
 
     await expect(
-      sendManualConversationMessage(
-        analystId,
-        Role.ANALYST,
-        sessionId,
-        "Estou verificando.",
-      ),
+      sendManualConversationMessage(analystId, Role.ANALYST, sessionId, "Estou verificando."),
     ).resolves.toMatchObject({
       success: true,
       data: expect.objectContaining({
@@ -935,12 +911,7 @@ describe("sendManualConversationMessage", () => {
   it("nega mensagens de funcionário em conversa de outra pessoa ou fora do handoff", async () => {
     setTransactionSession(ChatStatus.WAITING_HUMAN, null, "employee-2");
     await expect(
-      sendManualConversationMessage(
-        employeeId,
-        Role.EMPLOYEE,
-        sessionId,
-        "Mensagem indevida.",
-      ),
+      sendManualConversationMessage(employeeId, Role.EMPLOYEE, sessionId, "Mensagem indevida."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
 
     setTransactionSession(ChatStatus.BOT_ACTIVE);
@@ -957,34 +928,19 @@ describe("sendManualConversationMessage", () => {
   it("nega mensagens de analistas não atribuídos", async () => {
     setTransactionSession(ChatStatus.HUMAN_ACTIVE, "analyst-2");
     await expect(
-      sendManualConversationMessage(
-        analystId,
-        Role.ANALYST,
-        sessionId,
-        "Mensagem indevida.",
-      ),
+      sendManualConversationMessage(analystId, Role.ANALYST, sessionId, "Mensagem indevida."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.FORBIDDEN } });
   });
 
   it("não envia mensagens quando a conversa está ausente ou encerrada", async () => {
     resolveMock(transactionMock.chatSession.findUnique, null);
     await expect(
-      sendManualConversationMessage(
-        employeeId,
-        Role.EMPLOYEE,
-        sessionId,
-        "Mensagem.",
-      ),
+      sendManualConversationMessage(employeeId, Role.EMPLOYEE, sessionId, "Mensagem."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
 
     setTransactionSession(ChatStatus.CLOSED);
     await expect(
-      sendManualConversationMessage(
-        employeeId,
-        Role.EMPLOYEE,
-        sessionId,
-        "Mensagem.",
-      ),
+      sendManualConversationMessage(employeeId, Role.EMPLOYEE, sessionId, "Mensagem."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
   });
 
@@ -993,12 +949,7 @@ describe("sendManualConversationMessage", () => {
     resolveMock(transactionMock.chatMessage.count, 30);
 
     await expect(
-      sendManualConversationMessage(
-        employeeId,
-        Role.EMPLOYEE,
-        sessionId,
-        "Mensagem excedente.",
-      ),
+      sendManualConversationMessage(employeeId, Role.EMPLOYEE, sessionId, "Mensagem excedente."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
@@ -1009,12 +960,7 @@ describe("sendManualConversationMessage", () => {
     resolveMock(transactionMock.chatSession.updateMany, { count: 0 });
 
     await expect(
-      sendManualConversationMessage(
-        analystId,
-        Role.ANALYST,
-        sessionId,
-        "Mensagem.",
-      ),
+      sendManualConversationMessage(analystId, Role.ANALYST, sessionId, "Mensagem."),
     ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
     expect(transactionMock.chatMessage.create).not.toHaveBeenCalled();
   });
@@ -1061,9 +1007,7 @@ describe("createTicketFromDraft", () => {
     });
     resolveMock(prisma.chatSession.update, { id: sessionId });
 
-    await expect(
-      createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
       success: true,
       data: expect.objectContaining({
         outcome: "created",
@@ -1090,9 +1034,10 @@ describe("createTicketFromDraft", () => {
       metadata: { ...draftMetadata, confirmed: true },
     });
 
-    await expect(
-      createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
+    });
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 
@@ -1108,9 +1053,10 @@ describe("createTicketFromDraft", () => {
     });
     resolveMock(prisma.$executeRaw, BigInt(0));
 
-    await expect(
-      createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
+    });
     expect(createTicketForUser).not.toHaveBeenCalled();
   });
 
@@ -1125,10 +1071,77 @@ describe("createTicketFromDraft", () => {
       metadata: { ...draftMetadata, cancelled: true },
     });
 
-    await expect(
-      createTicketFromDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
+    });
     expect(createTicketForUser).not.toHaveBeenCalled();
+  });
+
+  it("usa createTicketForUser quando o resume do Mastra falha", async () => {
+    resolveMock(prisma.chatSession.findFirst, {
+      id: sessionId,
+      status: ChatStatus.BOT_ACTIVE,
+      ticketId: null,
+    });
+    resolveMock(prisma.chatMessage.count, 2);
+    resolveMock(prisma.chatMessage.findFirst, {
+      id: draftMessageId,
+      metadata: { ...draftMetadata, workflowRunId: "run-1" },
+    });
+    resolveMock(prisma.$executeRaw, BigInt(1));
+    (
+      resumeOpenTicketRun as unknown as {
+        mockRejectedValue: (value: unknown) => unknown;
+      }
+    ).mockRejectedValue(new Error("Não foi possível concluir o rascunho do chamado."));
+    (
+      createTicketForUser as unknown as {
+        mockResolvedValue: (value: unknown) => unknown;
+      }
+    ).mockResolvedValue({
+      outcome: "created",
+      ticket: { id: "ticket-1", code: "INC-1", priority: "HIGH" },
+    });
+    resolveMock(prisma.chatMessage.create, {
+      id: "msg",
+      chatSessionId: sessionId,
+    });
+    resolveMock(prisma.chatSession.update, { id: sessionId });
+
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: true,
+      data: expect.objectContaining({
+        outcome: "created",
+        ticket: expect.objectContaining({ code: "INC-1" }),
+      }),
+    });
+    expect(createTicketForUser).toHaveBeenCalled();
+  });
+
+  it("desfaz o claim se o persistir do chamado falhar", async () => {
+    resolveMock(prisma.chatSession.findFirst, {
+      id: sessionId,
+      status: ChatStatus.BOT_ACTIVE,
+      ticketId: null,
+    });
+    resolveMock(prisma.chatMessage.count, 2);
+    resolveMock(prisma.chatMessage.findFirst, {
+      id: draftMessageId,
+      metadata: draftMetadata,
+    });
+    resolveMock(prisma.$executeRaw, BigInt(1));
+    (
+      createTicketForUser as unknown as {
+        mockRejectedValue: (value: unknown) => unknown;
+      }
+    ).mockRejectedValue(new Error("db down"));
+
+    await expect(createTicketFromDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.BAD_GATEWAY },
+    });
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -1165,9 +1178,7 @@ describe("cancelTicketDraft", () => {
     });
     resolveMock(prisma.chatSession.update, { id: sessionId });
 
-    await expect(
-      cancelTicketDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({
+    await expect(cancelTicketDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
       success: true,
       data: expect.objectContaining({
         messages: expect.any(Array),
@@ -1196,9 +1207,10 @@ describe("cancelTicketDraft", () => {
       metadata: { ...draftMetadata, confirmed: true },
     });
 
-    await expect(
-      cancelTicketDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.CONFLICT } });
+    await expect(cancelTicketDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.CONFLICT },
+    });
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 
@@ -1210,9 +1222,10 @@ describe("cancelTicketDraft", () => {
     resolveMock(prisma.chatMessage.count, 2);
     resolveMock(prisma.chatMessage.findFirst, null);
 
-    await expect(
-      cancelTicketDraft(draftOwnerId, draftMessageId),
-    ).resolves.toMatchObject({ success: false, error: { statusCode: HttpStatus.NOT_FOUND } });
+    await expect(cancelTicketDraft(draftOwnerId, draftMessageId)).resolves.toMatchObject({
+      success: false,
+      error: { statusCode: HttpStatus.NOT_FOUND },
+    });
     expect(createTicketForUser).not.toHaveBeenCalled();
   });
 });

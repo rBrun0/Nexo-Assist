@@ -1,27 +1,12 @@
 import "server-only";
 
-import {
-  ChatStatus,
-  MessageSender,
-  Prisma,
-  Role,
-  TicketStatus,
-} from "@prisma/client";
+import { ChatStatus, MessageSender, Prisma, Role, TicketStatus } from "@prisma/client";
 
 import { CONVERSATION_MESSAGE_LIMIT } from "@/lib/constants";
-import {
-  AppErrors,
-  DomainError,
-  fromDomain,
-  unwrapOrThrow,
-  type ServiceError,
-} from "@/lib/errors";
+import { AppErrors, DomainError, fromDomain, type ServiceError, unwrapOrThrow } from "@/lib/errors";
 import { prisma } from "@/lib/prisma";
 import { isTicketOverdue } from "@/lib/services/ticket-sla";
-import {
-  createTicketForUser,
-  transferTicketToAnalyst,
-} from "@/lib/services/tickets";
+import { createTicketForUser, transferTicketToAnalyst } from "@/lib/services/tickets";
 import { ticketDraftSchema } from "@/lib/validations/ticket";
 
 export { CONVERSATION_MESSAGE_LIMIT };
@@ -32,10 +17,7 @@ const ACTIVE_CHAT_STATUSES = [
   ChatStatus.HUMAN_ACTIVE,
 ];
 
-const ANALYST_QUEUE_CHAT_STATUSES = [
-  ...ACTIVE_CHAT_STATUSES,
-  ChatStatus.CLOSED,
-];
+const ANALYST_QUEUE_CHAT_STATUSES = [...ACTIVE_CHAT_STATUSES, ChatStatus.CLOSED];
 
 const countableMessageWhere = {
   sender: { not: MessageSender.SYSTEM },
@@ -142,10 +124,7 @@ type AnalystTicketRow = {
   updatedAt: Date;
 };
 
-function mergeEmployeeTickets(
-  created: AnalystTicketRow[],
-  affected: AnalystTicketRow[],
-) {
+function mergeEmployeeTickets(created: AnalystTicketRow[], affected: AnalystTicketRow[]) {
   const byId = new Map<string, AnalystTicketRow>();
   for (const ticket of [...created, ...affected]) {
     if (!byId.has(ticket.id)) byId.set(ticket.id, ticket);
@@ -169,11 +148,7 @@ function rethrowDomain(error: ServiceError) {
   return new DomainError(error);
 }
 
-export async function getChatHistoryForUser(
-  userId: string,
-  role: Role,
-  sessionId: string,
-) {
+export async function getChatHistoryForUser(userId: string, role: Role, sessionId: string) {
   return fromDomain(async () => {
     const session = await prisma.chatSession.findFirst({
       where: {
@@ -193,14 +168,10 @@ export async function getChatHistoryForUser(
           role === Role.EMPLOYEE
             ? { in: [MessageSender.ASSISTANT, MessageSender.ANALYST] }
             : MessageSender.EMPLOYEE,
-        ...(role === Role.EMPLOYEE
-          ? { readAtByEmployee: null }
-          : { readAtByAnalyst: null }),
+        ...(role === Role.EMPLOYEE ? { readAtByEmployee: null } : { readAtByAnalyst: null }),
       },
       data:
-        role === Role.EMPLOYEE
-          ? { readAtByEmployee: new Date() }
-          : { readAtByAnalyst: new Date() },
+        role === Role.EMPLOYEE ? { readAtByEmployee: new Date() } : { readAtByAnalyst: new Date() },
     });
 
     const messages = await prisma.chatMessage.findMany({
@@ -233,10 +204,7 @@ export async function getOrCreateEmployeeConversation(userId: string) {
   try {
     return await prisma.chatSession.create({ data: { userId } });
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const concurrentSession = await findActiveEmployeeConversation(userId);
       if (concurrentSession) return concurrentSession;
     }
@@ -301,10 +269,7 @@ export async function createEmployeeMessage(
       const ticket = await prisma.ticket.findFirst({
         where: {
           id: selectedTicketId,
-          OR: [
-            { createdById: userId },
-            { affectedUsers: { some: { id: userId } } },
-          ],
+          OR: [{ createdById: userId }, { affectedUsers: { some: { id: userId } } }],
         },
         select: { id: true },
       });
@@ -315,12 +280,7 @@ export async function createEmployeeMessage(
 
     if (session.status !== ChatStatus.BOT_ACTIVE) {
       const message = unwrapOrThrow(
-        await sendManualConversationMessage(
-          userId,
-          Role.EMPLOYEE,
-          session.id,
-          content,
-        ),
+        await sendManualConversationMessage(userId, Role.EMPLOYEE, session.id, content),
         rethrowDomain,
       );
       return { session, message, shouldRunAgent: false };
@@ -373,82 +333,70 @@ export async function sendManualConversationMessage(
 ) {
   return fromDomain(async () =>
     prisma.$transaction(async (transaction) => {
-    const session = await transaction.chatSession.findUnique({
-      where: { id: sessionId },
-      select: {
-        id: true,
-        userId: true,
-        status: true,
-        assignedAnalystId: true,
-      },
-    });
+      const session = await transaction.chatSession.findUnique({
+        where: { id: sessionId },
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          assignedAnalystId: true,
+        },
+      });
 
-    if (!session || session.status === ChatStatus.CLOSED) {
-      throw new DomainError(AppErrors.conversationNotFoundOrClosed);
-    }
+      if (!session || session.status === ChatStatus.CLOSED) {
+        throw new DomainError(AppErrors.conversationNotFoundOrClosed);
+      }
 
-    const sender =
-      actorRole === Role.ANALYST
-        ? MessageSender.ANALYST
-        : MessageSender.EMPLOYEE;
-    const isAllowedEmployee =
-      actorRole === Role.EMPLOYEE &&
-      session.userId === actorId &&
-      (session.status === ChatStatus.WAITING_HUMAN ||
-        session.status === ChatStatus.HUMAN_ACTIVE);
-    const isAssignedAnalyst =
-      actorRole === Role.ANALYST &&
-      session.status === ChatStatus.HUMAN_ACTIVE &&
-      session.assignedAnalystId === actorId;
+      const sender = actorRole === Role.ANALYST ? MessageSender.ANALYST : MessageSender.EMPLOYEE;
+      const isAllowedEmployee =
+        actorRole === Role.EMPLOYEE &&
+        session.userId === actorId &&
+        (session.status === ChatStatus.WAITING_HUMAN || session.status === ChatStatus.HUMAN_ACTIVE);
+      const isAssignedAnalyst =
+        actorRole === Role.ANALYST &&
+        session.status === ChatStatus.HUMAN_ACTIVE &&
+        session.assignedAnalystId === actorId;
 
-    if (!isAllowedEmployee && !isAssignedAnalyst) {
-      throw new DomainError(
-        actorRole === Role.ANALYST
-          ? AppErrors.conversationMustBeAssignedToReply
-          : AppErrors.manualMessagesOnlyDuringHuman,
-      );
-    }
+      if (!isAllowedEmployee && !isAssignedAnalyst) {
+        throw new DomainError(
+          actorRole === Role.ANALYST
+            ? AppErrors.conversationMustBeAssignedToReply
+            : AppErrors.manualMessagesOnlyDuringHuman,
+        );
+      }
 
-    const messageCount = await countCountableMessages(sessionId, transaction);
-    if (messageCount >= CONVERSATION_MESSAGE_LIMIT) {
-      throw new DomainError(AppErrors.conversationMessageLimitReached);
-    }
+      const messageCount = await countCountableMessages(sessionId, transaction);
+      if (messageCount >= CONVERSATION_MESSAGE_LIMIT) {
+        throw new DomainError(AppErrors.conversationMessageLimitReached);
+      }
 
-    const now = new Date();
-    const allowedSession = await transaction.chatSession.updateMany({
-      where: {
-        id: sessionId,
-        status: session.status,
-        ...(actorRole === Role.EMPLOYEE
-          ? { userId: actorId }
-          : { assignedAnalystId: actorId }),
-      },
-      data: { updatedAt: now },
-    });
-    if (allowedSession.count !== 1) {
-      throw new DomainError(AppErrors.conversationOwnerOrStateChanged);
-    }
+      const now = new Date();
+      const allowedSession = await transaction.chatSession.updateMany({
+        where: {
+          id: sessionId,
+          status: session.status,
+          ...(actorRole === Role.EMPLOYEE ? { userId: actorId } : { assignedAnalystId: actorId }),
+        },
+        data: { updatedAt: now },
+      });
+      if (allowedSession.count !== 1) {
+        throw new DomainError(AppErrors.conversationOwnerOrStateChanged);
+      }
 
-    return transaction.chatMessage.create({
-      data: {
-        chatSessionId: sessionId,
-        sender,
-        senderUserId: actorId,
-        content,
-        ...(actorRole === Role.EMPLOYEE
-          ? { readAtByEmployee: now }
-          : { readAtByAnalyst: now }),
-      },
-    });
-  }),
+      return transaction.chatMessage.create({
+        data: {
+          chatSessionId: sessionId,
+          sender,
+          senderUserId: actorId,
+          content,
+          ...(actorRole === Role.EMPLOYEE ? { readAtByEmployee: now } : { readAtByAnalyst: now }),
+        },
+      });
+    }),
   );
 }
 
-export async function markSessionWaitingHuman(
-  sessionId: string,
-  userId: string,
-  reason: string,
-) {
+export async function markSessionWaitingHuman(sessionId: string, userId: string, reason: string) {
   const now = new Date();
   const summary = reason.slice(0, 2000);
   const updated = await prisma.chatSession.updateMany({
@@ -479,12 +427,7 @@ export async function markSessionWaitingHuman(
     return { applied: false, alreadyWaiting: Boolean(current) };
   }
 
-  await createSystemMessage(
-    sessionId,
-    "Transferida para suporte N2",
-    prisma,
-    now,
-  );
+  await createSystemMessage(sessionId, "Transferida para suporte N2", prisma, now);
   const session = await prisma.chatSession.findUnique({
     where: { id: sessionId },
     select: { ticketId: true },
@@ -513,42 +456,54 @@ export async function saveAssistantMessage(
 ) {
   return fromDomain(async () =>
     prisma.$transaction(async (transaction) => {
-    const now = new Date();
-    const updatedSession = await transaction.chatSession.updateMany({
-      where: { id: sessionId, status: ChatStatus.BOT_ACTIVE },
-      data: {
-        confidenceScore,
-        ...(handoffSummary
-          ? {
-              status: ChatStatus.WAITING_HUMAN,
-              assignedAnalystId: null,
-              handoffSummary: handoffSummary.slice(0, 2000),
-              handoffReason: (handoffReason ?? handoffSummary).slice(0, 2000),
-              handoffAt: now,
-            }
-          : {}),
-        updatedAt: now,
-      },
-    });
-    if (updatedSession.count !== 1) {
-      if (!handoffSummary) {
-        throw new DomainError(AppErrors.assistantSaveStateChanged);
-      }
-      const current = await transaction.chatSession.findUnique({
-        where: { id: sessionId },
-        select: { status: true },
+      const now = new Date();
+      const updatedSession = await transaction.chatSession.updateMany({
+        where: { id: sessionId, status: ChatStatus.BOT_ACTIVE },
+        data: {
+          confidenceScore,
+          ...(handoffSummary
+            ? {
+                status: ChatStatus.WAITING_HUMAN,
+                assignedAnalystId: null,
+                handoffSummary: handoffSummary.slice(0, 2000),
+                handoffReason: (handoffReason ?? handoffSummary).slice(0, 2000),
+                handoffAt: now,
+              }
+            : {}),
+          updatedAt: now,
+        },
       });
-      if (current?.status !== ChatStatus.WAITING_HUMAN) {
-        throw new DomainError(AppErrors.assistantSaveStateChanged);
+      if (updatedSession.count !== 1) {
+        if (!handoffSummary) {
+          throw new DomainError(AppErrors.assistantSaveStateChanged);
+        }
+        const current = await transaction.chatSession.findUnique({
+          where: { id: sessionId },
+          select: { status: true },
+        });
+        if (current?.status !== ChatStatus.WAITING_HUMAN) {
+          throw new DomainError(AppErrors.assistantSaveStateChanged);
+        }
+        const kept = await transaction.chatSession.updateMany({
+          where: { id: sessionId, status: ChatStatus.WAITING_HUMAN },
+          data: { confidenceScore, updatedAt: now },
+        });
+        if (kept.count !== 1) {
+          throw new DomainError(AppErrors.assistantSaveStateChanged);
+        }
+        return transaction.chatMessage.create({
+          data: {
+            chatSessionId: sessionId,
+            sender: MessageSender.ASSISTANT,
+            content,
+            thoughtProcess,
+            metadata,
+            readAtByEmployee: new Date(),
+          },
+        });
       }
-      const kept = await transaction.chatSession.updateMany({
-        where: { id: sessionId, status: ChatStatus.WAITING_HUMAN },
-        data: { confidenceScore, updatedAt: now },
-      });
-      if (kept.count !== 1) {
-        throw new DomainError(AppErrors.assistantSaveStateChanged);
-      }
-      return transaction.chatMessage.create({
+
+      const message = await transaction.chatMessage.create({
         data: {
           chatSessionId: sessionId,
           sender: MessageSender.ASSISTANT,
@@ -558,37 +513,20 @@ export async function saveAssistantMessage(
           readAtByEmployee: new Date(),
         },
       });
-    }
 
-    const message = await transaction.chatMessage.create({
-      data: {
-        chatSessionId: sessionId,
-        sender: MessageSender.ASSISTANT,
-        content,
-        thoughtProcess,
-        metadata,
-        readAtByEmployee: new Date(),
-      },
-    });
-
-    if (handoffSummary) {
-      await createSystemMessage(
-        sessionId,
-        "Transferida para suporte N2",
-        transaction,
-        now,
-      );
-      const session = await transaction.chatSession.findUnique({
-        where: { id: sessionId },
-        select: { ticketId: true },
-      });
-      if (session?.ticketId) {
-        await transferTicketToAnalyst(session.ticketId, transaction);
+      if (handoffSummary) {
+        await createSystemMessage(sessionId, "Transferida para suporte N2", transaction, now);
+        const session = await transaction.chatSession.findUnique({
+          where: { id: sessionId },
+          select: { ticketId: true },
+        });
+        if (session?.ticketId) {
+          await transferTicketToAnalyst(session.ticketId, transaction);
+        }
       }
-    }
 
-    return message;
-  }),
+      return message;
+    }),
   );
 }
 
@@ -636,10 +574,7 @@ export async function requestAnalystHandoff(
       throw new DomainError(AppErrors.conversationClosed);
     }
 
-    if (
-      session.status === ChatStatus.WAITING_HUMAN ||
-      session.status === ChatStatus.HUMAN_ACTIVE
-    ) {
+    if (session.status === ChatStatus.WAITING_HUMAN || session.status === ChatStatus.HUMAN_ACTIVE) {
       const current = await getEmployeeConversation(userId);
       if (!current) {
         throw new DomainError(AppErrors.conversationNotFound);
@@ -669,12 +604,7 @@ export async function requestAnalystHandoff(
       throw new DomainError(AppErrors.conversationStateChanged);
     }
 
-    await createSystemMessage(
-      session.id,
-      "Transferida para suporte N2",
-      prisma,
-      now,
-    );
+    await createSystemMessage(session.id, "Transferida para suporte N2", prisma, now);
     if (session.ticketId) {
       await transferTicketToAnalyst(session.ticketId);
     }
@@ -690,10 +620,7 @@ export async function requestAnalystHandoff(
 export async function getEmployeeTicketsForAgent(userId: string) {
   const tickets = await prisma.ticket.findMany({
     where: {
-      OR: [
-        { createdById: userId },
-        { affectedUsers: { some: { id: userId } } },
-      ],
+      OR: [{ createdById: userId }, { affectedUsers: { some: { id: userId } } }],
     },
     select: {
       id: true,
@@ -719,56 +646,93 @@ export async function getEmployeeTicketsForAgent(userId: string) {
   }));
 }
 
-export async function createTicketFromDraft(
-  userId: string,
+async function revertDraftConfirmationClaim(
   draftMessageId: string,
+  sessionId: string,
+  metadata: Record<string, unknown>,
 ) {
+  const rest = { ...metadata };
+  delete rest.confirmed;
+  delete rest.confirmedAt;
+  await prisma.$executeRaw`
+    UPDATE "ChatMessage"
+    SET metadata = ${JSON.stringify(rest)}::jsonb
+    WHERE id = ${draftMessageId}
+      AND "chatSessionId" = ${sessionId}
+      AND sender = 'ASSISTANT'
+  `;
+}
+
+async function persistConfirmedDraftTicket(
+  userId: string,
+  draft: ReturnType<typeof ticketDraftSchema.parse>,
+  workflowRunId: string,
+) {
+  if (workflowRunId) {
+    try {
+      const { resumeOpenTicketRun } = await import("@/lib/mastra/resume-open-ticket");
+      const resumed = await resumeOpenTicketRun(workflowRunId, true);
+      if (!resumed.cancelled && resumed.outcome) {
+        return { ticket: resumed.ticket, outcome: resumed.outcome };
+      }
+      console.error("Workflow do rascunho não persistiu o chamado; usando fallback.", {
+        workflowRunId,
+      });
+    } catch (error) {
+      console.error("Falha ao retomar o workflow do rascunho:", {
+        workflowRunId,
+        error,
+      });
+    }
+  }
+
+  return createTicketForUser(userId, {
+    ...draft,
+    confirmed: true,
+  });
+}
+
+export async function createTicketFromDraft(userId: string, draftMessageId: string) {
   return fromDomain(async () => {
-  const session = await getOrCreateEmployeeConversation(userId);
-  const messageCount = await countCountableMessages(session.id);
-  if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
-    throw new DomainError(AppErrors.conversationNoSpaceToConfirm);
-  }
+    const session = await getOrCreateEmployeeConversation(userId);
+    const messageCount = await countCountableMessages(session.id);
+    if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
+      throw new DomainError(AppErrors.conversationNoSpaceToConfirm);
+    }
 
-  const draftMessage = await prisma.chatMessage.findFirst({
-    where: {
-      id: draftMessageId,
-      chatSessionId: session.id,
-      sender: MessageSender.ASSISTANT,
-    },
-    select: { id: true, metadata: true },
-  });
-  if (
-    !draftMessage ||
-    !draftMessage.metadata ||
-    typeof draftMessage.metadata !== "object"
-  ) {
-    throw new DomainError(AppErrors.ticketDraftNotFound);
-  }
+    const draftMessage = await prisma.chatMessage.findFirst({
+      where: {
+        id: draftMessageId,
+        chatSessionId: session.id,
+        sender: MessageSender.ASSISTANT,
+      },
+      select: { id: true, metadata: true },
+    });
+    if (!draftMessage || !draftMessage.metadata || typeof draftMessage.metadata !== "object") {
+      throw new DomainError(AppErrors.ticketDraftNotFound);
+    }
 
-  const metadata = draftMessage.metadata as Record<string, unknown>;
-  if (metadata.kind !== "ticket_draft") {
-    throw new DomainError(AppErrors.ticketDraftNotInMessage);
-  }
-  if (metadata.confirmed === true) {
-    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
-  }
-  if (metadata.cancelled === true) {
-    throw new DomainError(AppErrors.ticketDraftCancelled);
-  }
+    const metadata = draftMessage.metadata as Record<string, unknown>;
+    if (metadata.kind !== "ticket_draft") {
+      throw new DomainError(AppErrors.ticketDraftNotInMessage);
+    }
+    if (metadata.confirmed === true) {
+      throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
+    }
+    if (metadata.cancelled === true) {
+      throw new DomainError(AppErrors.ticketDraftCancelled);
+    }
 
-  const draft = ticketDraftSchema.safeParse({
-    ...(typeof metadata.draft === "object" && metadata.draft !== null
-      ? metadata.draft
-      : {}),
-    affectedUserIds: [userId],
-  });
-  if (!draft.success) {
-    throw new DomainError(AppErrors.ticketDraftInvalid);
-  }
+    const draft = ticketDraftSchema.safeParse({
+      ...(typeof metadata.draft === "object" && metadata.draft !== null ? metadata.draft : {}),
+      affectedUserIds: [userId],
+    });
+    if (!draft.success) {
+      throw new DomainError(AppErrors.ticketDraftInvalid);
+    }
 
-  const confirmedAt = new Date().toISOString();
-  const claimed = await prisma.$executeRaw`
+    const confirmedAt = new Date().toISOString();
+    const claimed = await prisma.$executeRaw`
     UPDATE "ChatMessage"
     SET metadata = ${JSON.stringify({
       ...metadata,
@@ -782,140 +746,125 @@ export async function createTicketFromDraft(
       AND COALESCE(metadata->>'confirmed', 'false') <> 'true'
       AND COALESCE(metadata->>'cancelled', 'false') <> 'true'
   `;
-  if (Number(claimed) !== 1) {
-    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
-  }
-
-  const workflowRunId =
-    typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
-  const result = workflowRunId
-    ? await (async () => {
-        const { resumeOpenTicketRun } =
-          await import("@/lib/mastra/resume-open-ticket");
-        const resumed = await resumeOpenTicketRun(workflowRunId, true);
-        if (resumed.cancelled || !resumed.outcome) {
-          throw new DomainError(AppErrors.ticketPersistFailed);
-        }
-        return { ticket: resumed.ticket, outcome: resumed.outcome };
-      })()
-    : await createTicketForUser(userId, {
-        ...draft.data,
-        confirmed: true,
-      });
-
-  const responseContent = !result.ticket
-    ? "Pronto, registrei você como também afetado pelo chamado existente e atualizei a prioridade."
-    : `Chamado ${result.ticket.code} ${result.outcome === "reopened" ? "reaberto" : result.outcome === "updated" ? "atualizado" : "criado"} com sucesso.`;
-
-  const [userMessage, assistantMessage] = await prisma.$transaction([
-    prisma.chatMessage.create({
-      data: {
-        chatSessionId: session.id,
-        sender: MessageSender.EMPLOYEE,
-        senderUserId: userId,
-        content: "Confirmei o rascunho do chamado.",
-        readAtByEmployee: new Date(),
-        metadata: { action: "confirm_ticket", draftMessageId },
-      },
-    }),
-    prisma.chatMessage.create({
-      data: {
-        chatSessionId: session.id,
-        sender: MessageSender.ASSISTANT,
-        content: responseContent,
-        thoughtProcess: {
-          actions: [
-            {
-              name: result.outcome,
-              label: "Registrou o chamado após sua confirmação",
-            },
-          ],
-          confidence: "high",
-          rationale:
-            "O rascunho foi confirmado explicitamente pelo funcionário.",
-        },
-        metadata: result.ticket
-          ? {
-              kind: "ticket",
-              ticketId: result.ticket.id,
-              ticketCode: result.ticket.code,
-            }
-          : { kind: "ticket_linked" },
-        readAtByEmployee: new Date(),
-      },
-    }),
-  ]);
-  await prisma.chatSession.update({
-    where: { id: session.id },
-    data: {
-      ticketId: result.ticket?.id ?? session.ticketId,
-      updatedAt: new Date(),
-    },
-  });
-
-  const confirmedPriority = result.ticket?.priority ?? draft.data.priority;
-  if (confirmedPriority === "CRITICAL" && result.ticket) {
-    if (session.status === ChatStatus.BOT_ACTIVE) {
-      unwrapOrThrow(
-        await requestAnalystHandoff(
-          userId,
-          `Chamado ${result.ticket.code} classificado como crítico.`,
-        ),
-        rethrowDomain,
-      );
-    } else if (session.status === ChatStatus.WAITING_HUMAN) {
-      await transferTicketToAnalyst(result.ticket.id);
+    if (Number(claimed) !== 1) {
+      throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
     }
-  }
 
-  return {
-    outcome: result.outcome,
-    ticket: result.ticket,
-    messages: [userMessage, assistantMessage],
-  };
+    const workflowRunId = typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
+    let result: Awaited<ReturnType<typeof persistConfirmedDraftTicket>>;
+    try {
+      result = await persistConfirmedDraftTicket(userId, draft.data, workflowRunId);
+    } catch (error) {
+      await revertDraftConfirmationClaim(draftMessageId, session.id, metadata);
+      if (error instanceof DomainError) throw error;
+      throw new DomainError(AppErrors.ticketPersistFailed);
+    }
+
+    const responseContent = !result.ticket
+      ? "Pronto, registrei você como também afetado pelo chamado existente e atualizei a prioridade."
+      : `Chamado ${result.ticket.code} ${result.outcome === "reopened" ? "reaberto" : result.outcome === "updated" ? "atualizado" : "criado"} com sucesso.`;
+
+    const [userMessage, assistantMessage] = await prisma.$transaction([
+      prisma.chatMessage.create({
+        data: {
+          chatSessionId: session.id,
+          sender: MessageSender.EMPLOYEE,
+          senderUserId: userId,
+          content: "Confirmei o rascunho do chamado.",
+          readAtByEmployee: new Date(),
+          metadata: { action: "confirm_ticket", draftMessageId },
+        },
+      }),
+      prisma.chatMessage.create({
+        data: {
+          chatSessionId: session.id,
+          sender: MessageSender.ASSISTANT,
+          content: responseContent,
+          thoughtProcess: {
+            actions: [
+              {
+                name: result.outcome,
+                label: "Registrou o chamado após sua confirmação",
+              },
+            ],
+            confidence: "high",
+            rationale: "O rascunho foi confirmado explicitamente pelo funcionário.",
+          },
+          metadata: result.ticket
+            ? {
+                kind: "ticket",
+                ticketId: result.ticket.id,
+                ticketCode: result.ticket.code,
+              }
+            : { kind: "ticket_linked" },
+          readAtByEmployee: new Date(),
+        },
+      }),
+    ]);
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: {
+        ticketId: result.ticket?.id ?? session.ticketId,
+        updatedAt: new Date(),
+      },
+    });
+
+    const confirmedPriority = result.ticket?.priority ?? draft.data.priority;
+    if (confirmedPriority === "CRITICAL" && result.ticket) {
+      if (session.status === ChatStatus.BOT_ACTIVE) {
+        unwrapOrThrow(
+          await requestAnalystHandoff(
+            userId,
+            `Chamado ${result.ticket.code} classificado como crítico.`,
+          ),
+          rethrowDomain,
+        );
+      } else if (session.status === ChatStatus.WAITING_HUMAN) {
+        await transferTicketToAnalyst(result.ticket.id);
+      }
+    }
+
+    return {
+      outcome: result.outcome,
+      ticket: result.ticket,
+      messages: [userMessage, assistantMessage],
+    };
   });
 }
 
-export async function cancelTicketDraft(
-  userId: string,
-  draftMessageId: string,
-) {
+export async function cancelTicketDraft(userId: string, draftMessageId: string) {
   return fromDomain(async () => {
-  const session = await getOrCreateEmployeeConversation(userId);
-  const messageCount = await countCountableMessages(session.id);
-  if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
-    throw new DomainError(AppErrors.conversationNoSpaceToCancel);
-  }
+    const session = await getOrCreateEmployeeConversation(userId);
+    const messageCount = await countCountableMessages(session.id);
+    if (messageCount + 2 > CONVERSATION_MESSAGE_LIMIT) {
+      throw new DomainError(AppErrors.conversationNoSpaceToCancel);
+    }
 
-  const draftMessage = await prisma.chatMessage.findFirst({
-    where: {
-      id: draftMessageId,
-      chatSessionId: session.id,
-      sender: MessageSender.ASSISTANT,
-    },
-    select: { id: true, metadata: true },
-  });
-  if (
-    !draftMessage ||
-    !draftMessage.metadata ||
-    typeof draftMessage.metadata !== "object"
-  ) {
-    throw new DomainError(AppErrors.ticketDraftNotFound);
-  }
+    const draftMessage = await prisma.chatMessage.findFirst({
+      where: {
+        id: draftMessageId,
+        chatSessionId: session.id,
+        sender: MessageSender.ASSISTANT,
+      },
+      select: { id: true, metadata: true },
+    });
+    if (!draftMessage || !draftMessage.metadata || typeof draftMessage.metadata !== "object") {
+      throw new DomainError(AppErrors.ticketDraftNotFound);
+    }
 
-  const metadata = draftMessage.metadata as Record<string, unknown>;
-  if (metadata.kind !== "ticket_draft") {
-    throw new DomainError(AppErrors.ticketDraftNotInMessage);
-  }
-  if (metadata.confirmed === true) {
-    throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
-  }
-  if (metadata.cancelled === true) {
-    throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
-  }
+    const metadata = draftMessage.metadata as Record<string, unknown>;
+    if (metadata.kind !== "ticket_draft") {
+      throw new DomainError(AppErrors.ticketDraftNotInMessage);
+    }
+    if (metadata.confirmed === true) {
+      throw new DomainError(AppErrors.ticketDraftAlreadyConfirmed);
+    }
+    if (metadata.cancelled === true) {
+      throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
+    }
 
-  const cancelledAt = new Date().toISOString();
-  const claimed = await prisma.$executeRaw`
+    const cancelledAt = new Date().toISOString();
+    const claimed = await prisma.$executeRaw`
     UPDATE "ChatMessage"
     SET metadata = ${JSON.stringify({
       ...metadata,
@@ -928,59 +877,57 @@ export async function cancelTicketDraft(
       AND COALESCE(metadata->>'confirmed', 'false') <> 'true'
       AND COALESCE(metadata->>'cancelled', 'false') <> 'true'
   `;
-  if (Number(claimed) !== 1) {
-    throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
-  }
-
-  const workflowRunId =
-    typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
-  if (workflowRunId) {
-    try {
-      const { resumeOpenTicketRun } =
-        await import("@/lib/mastra/resume-open-ticket");
-      await resumeOpenTicketRun(workflowRunId, false);
-    } catch (error) {
-      console.error("Falha ao encerrar o workflow do rascunho:", error);
+    if (Number(claimed) !== 1) {
+      throw new DomainError(AppErrors.ticketDraftAlreadyCancelled);
     }
-  }
 
-  const [userMessage, assistantMessage] = await prisma.$transaction([
-    prisma.chatMessage.create({
-      data: {
-        chatSessionId: session.id,
-        sender: MessageSender.EMPLOYEE,
-        senderUserId: userId,
-        content: "Cancelei o rascunho do chamado.",
-        readAtByEmployee: new Date(),
-        metadata: { action: "cancel_ticket", draftMessageId },
-      },
-    }),
-    prisma.chatMessage.create({
-      data: {
-        chatSessionId: session.id,
-        sender: MessageSender.ASSISTANT,
-        content: "Rascunho cancelado. Nenhum chamado foi aberto.",
-        thoughtProcess: {
-          actions: [
-            {
-              name: "cancel_ticket",
-              label: "Cancelou o rascunho sem persistir chamado",
-            },
-          ],
-          confidence: "high",
-          rationale: "O funcionário cancelou o rascunho explicitamente.",
+    const workflowRunId = typeof metadata.workflowRunId === "string" ? metadata.workflowRunId : "";
+    if (workflowRunId) {
+      try {
+        const { resumeOpenTicketRun } = await import("@/lib/mastra/resume-open-ticket");
+        await resumeOpenTicketRun(workflowRunId, false);
+      } catch (error) {
+        console.error("Falha ao encerrar o workflow do rascunho:", error);
+      }
+    }
+
+    const [userMessage, assistantMessage] = await prisma.$transaction([
+      prisma.chatMessage.create({
+        data: {
+          chatSessionId: session.id,
+          sender: MessageSender.EMPLOYEE,
+          senderUserId: userId,
+          content: "Cancelei o rascunho do chamado.",
+          readAtByEmployee: new Date(),
+          metadata: { action: "cancel_ticket", draftMessageId },
         },
-        metadata: { kind: "options", options: [] },
-        readAtByEmployee: new Date(),
-      },
-    }),
-  ]);
-  await prisma.chatSession.update({
-    where: { id: session.id },
-    data: { updatedAt: new Date() },
-  });
+      }),
+      prisma.chatMessage.create({
+        data: {
+          chatSessionId: session.id,
+          sender: MessageSender.ASSISTANT,
+          content: "Rascunho cancelado. Nenhum chamado foi aberto.",
+          thoughtProcess: {
+            actions: [
+              {
+                name: "cancel_ticket",
+                label: "Cancelou o rascunho sem persistir chamado",
+              },
+            ],
+            confidence: "high",
+            rationale: "O funcionário cancelou o rascunho explicitamente.",
+          },
+          metadata: { kind: "options", options: [] },
+          readAtByEmployee: new Date(),
+        },
+      }),
+    ]);
+    await prisma.chatSession.update({
+      where: { id: session.id },
+      data: { updatedAt: new Date() },
+    });
 
-  return { messages: [userMessage, assistantMessage] };
+    return { messages: [userMessage, assistantMessage] };
   });
 }
 
@@ -1073,10 +1020,7 @@ async function clearAnalystUnread(sessionId: string) {
   });
 }
 
-export async function markConversationReadByAnalyst(
-  sessionId: string,
-  analystId: string,
-) {
+export async function markConversationReadByAnalyst(sessionId: string, analystId: string) {
   const session = await prisma.chatSession.findUnique({
     where: { id: sessionId },
     select: { assignedAnalystId: true },
@@ -1098,171 +1042,143 @@ export async function performAnalystConversationAction(
     | { action: "send_message"; message: string },
 ) {
   return fromDomain(async () => {
-  const session = await prisma.chatSession.findUnique({
-    where: { id: sessionId },
-    select: {
-      id: true,
-      status: true,
-      assignedAnalystId: true,
-      ticketId: true,
-    },
-  });
-  if (!session || session.status === ChatStatus.CLOSED) {
-    throw new DomainError(AppErrors.conversationNotFoundOrAlreadyClosed);
-  }
-
-  if (action.action === "claim") {
-    if (
-      session.status === ChatStatus.HUMAN_ACTIVE &&
-      session.assignedAnalystId === analystId
-    ) {
-      await markConversationReadByAnalyst(sessionId, analystId);
-      return { status: ChatStatus.HUMAN_ACTIVE };
-    }
-
-    if (session.status !== ChatStatus.WAITING_HUMAN) {
-      throw new DomainError(AppErrors.conversationNotWaitingOrClaimed);
-    }
-
-    const analyst = await prisma.user.findUnique({
-      where: { id: analystId },
-      select: { name: true },
-    });
-    const now = new Date();
-    const claimed = await prisma.chatSession.updateMany({
-      where: {
-        id: sessionId,
-        status: ChatStatus.WAITING_HUMAN,
-        assignedAnalystId: null,
-      },
-      data: {
-        status: ChatStatus.HUMAN_ACTIVE,
-        assignedAnalystId: analystId,
-        updatedAt: now,
+    const session = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        status: true,
+        assignedAnalystId: true,
+        ticketId: true,
       },
     });
-    if (claimed.count !== 1) {
-      throw new DomainError(AppErrors.conversationClaimedByOther);
+    if (!session || session.status === ChatStatus.CLOSED) {
+      throw new DomainError(AppErrors.conversationNotFoundOrAlreadyClosed);
     }
-    await createSystemMessage(
-      sessionId,
-      `${analyst?.name ?? "Analista"} assumiu — agent pausado`,
-      prisma,
-      now,
-    );
-    if (session.ticketId) {
-      await prisma.ticket.updateMany({
-        where: {
-          id: session.ticketId,
-          status: {
-            in: [
-              TicketStatus.OPEN,
-              TicketStatus.WAITING_ANALYST,
-              TicketStatus.APPROVED,
-            ],
-          },
-        },
-        data: { status: TicketStatus.IN_PROGRESS },
+
+    if (action.action === "claim") {
+      if (session.status === ChatStatus.HUMAN_ACTIVE && session.assignedAnalystId === analystId) {
+        await markConversationReadByAnalyst(sessionId, analystId);
+        return { status: ChatStatus.HUMAN_ACTIVE };
+      }
+
+      if (session.status !== ChatStatus.WAITING_HUMAN) {
+        throw new DomainError(AppErrors.conversationNotWaitingOrClaimed);
+      }
+
+      const analyst = await prisma.user.findUnique({
+        where: { id: analystId },
+        select: { name: true },
       });
-    }
-    await clearAnalystUnread(sessionId);
-    return { status: ChatStatus.HUMAN_ACTIVE };
-  }
-
-  if (action.action === "return_to_bot") {
-    const now = new Date();
-    const clearHandoffData = {
-      status: ChatStatus.BOT_ACTIVE,
-      assignedAnalystId: null,
-      handoffSummary: null,
-      handoffReason: null,
-      handoffAt: null,
-      confidenceScore: null,
-      updatedAt: now,
-    };
-
-    if (session.status === ChatStatus.WAITING_HUMAN) {
-      const returned = await prisma.chatSession.updateMany({
+      const now = new Date();
+      const claimed = await prisma.chatSession.updateMany({
         where: {
           id: sessionId,
           status: ChatStatus.WAITING_HUMAN,
           assignedAnalystId: null,
+        },
+        data: {
+          status: ChatStatus.HUMAN_ACTIVE,
+          assignedAnalystId: analystId,
+          updatedAt: now,
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new DomainError(AppErrors.conversationClaimedByOther);
+      }
+      await createSystemMessage(
+        sessionId,
+        `${analyst?.name ?? "Analista"} assumiu — agent pausado`,
+        prisma,
+        now,
+      );
+      if (session.ticketId) {
+        await prisma.ticket.updateMany({
+          where: {
+            id: session.ticketId,
+            status: {
+              in: [TicketStatus.OPEN, TicketStatus.WAITING_ANALYST, TicketStatus.APPROVED],
+            },
+          },
+          data: { status: TicketStatus.IN_PROGRESS },
+        });
+      }
+      await clearAnalystUnread(sessionId);
+      return { status: ChatStatus.HUMAN_ACTIVE };
+    }
+
+    if (action.action === "return_to_bot") {
+      const now = new Date();
+      const clearHandoffData = {
+        status: ChatStatus.BOT_ACTIVE,
+        assignedAnalystId: null,
+        handoffSummary: null,
+        handoffReason: null,
+        handoffAt: null,
+        confidenceScore: null,
+        updatedAt: now,
+      };
+
+      if (session.status === ChatStatus.WAITING_HUMAN) {
+        const returned = await prisma.chatSession.updateMany({
+          where: {
+            id: sessionId,
+            status: ChatStatus.WAITING_HUMAN,
+            assignedAnalystId: null,
+          },
+          data: clearHandoffData,
+        });
+        if (returned.count !== 1) {
+          throw new DomainError(AppErrors.conversationUpdatedByOther);
+        }
+        await createSystemMessage(sessionId, "Devolvida ao Nexo Assist", prisma, now);
+        return { status: ChatStatus.BOT_ACTIVE };
+      }
+
+      if (session.status !== ChatStatus.HUMAN_ACTIVE || session.assignedAnalystId !== analystId) {
+        throw new DomainError(AppErrors.conversationMustBeAssigned);
+      }
+
+      const returned = await prisma.chatSession.updateMany({
+        where: {
+          id: sessionId,
+          status: ChatStatus.HUMAN_ACTIVE,
+          assignedAnalystId: analystId,
         },
         data: clearHandoffData,
       });
       if (returned.count !== 1) {
         throw new DomainError(AppErrors.conversationUpdatedByOther);
       }
-      await createSystemMessage(
-        sessionId,
-        "Devolvida ao Nexo Assist",
-        prisma,
-        now,
-      );
+      await createSystemMessage(sessionId, "Devolvida ao Nexo Assist", prisma, now);
       return { status: ChatStatus.BOT_ACTIVE };
     }
 
-    if (
-      session.status !== ChatStatus.HUMAN_ACTIVE ||
-      session.assignedAnalystId !== analystId
-    ) {
+    if (session.assignedAnalystId !== analystId || session.status !== ChatStatus.HUMAN_ACTIVE) {
       throw new DomainError(AppErrors.conversationMustBeAssigned);
     }
 
-    const returned = await prisma.chatSession.updateMany({
-      where: {
-        id: sessionId,
-        status: ChatStatus.HUMAN_ACTIVE,
-        assignedAnalystId: analystId,
-      },
-      data: clearHandoffData,
-    });
-    if (returned.count !== 1) {
-      throw new DomainError(AppErrors.conversationUpdatedByOther);
+    if (action.action === "close") {
+      const now = new Date();
+      const closed = await prisma.chatSession.updateMany({
+        where: {
+          id: sessionId,
+          status: ChatStatus.HUMAN_ACTIVE,
+          assignedAnalystId: analystId,
+        },
+        data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
+      });
+      if (closed.count !== 1) {
+        throw new DomainError(AppErrors.conversationUpdatedByOther);
+      }
+      await createSystemMessage(sessionId, "Conversa encerrada", prisma, now);
+      return { status: ChatStatus.CLOSED };
     }
-    await createSystemMessage(
-      sessionId,
-      "Devolvida ao Nexo Assist",
-      prisma,
-      now,
+
+    const message = unwrapOrThrow(
+      await sendManualConversationMessage(analystId, Role.ANALYST, sessionId, action.message),
+      rethrowDomain,
     );
-    return { status: ChatStatus.BOT_ACTIVE };
-  }
-
-  if (
-    session.assignedAnalystId !== analystId ||
-    session.status !== ChatStatus.HUMAN_ACTIVE
-  ) {
-    throw new DomainError(AppErrors.conversationMustBeAssigned);
-  }
-
-  if (action.action === "close") {
-    const now = new Date();
-    const closed = await prisma.chatSession.updateMany({
-      where: {
-        id: sessionId,
-        status: ChatStatus.HUMAN_ACTIVE,
-        assignedAnalystId: analystId,
-      },
-      data: { status: ChatStatus.CLOSED, closedAt: now, updatedAt: now },
-    });
-    if (closed.count !== 1) {
-      throw new DomainError(AppErrors.conversationUpdatedByOther);
-    }
-    await createSystemMessage(sessionId, "Conversa encerrada", prisma, now);
-    return { status: ChatStatus.CLOSED };
-  }
-
-  const message = unwrapOrThrow(
-    await sendManualConversationMessage(
-      analystId,
-      Role.ANALYST,
-      sessionId,
-      action.message,
-    ),
-    rethrowDomain,
-  );
-  return { status: ChatStatus.HUMAN_ACTIVE, message };
+    return { status: ChatStatus.HUMAN_ACTIVE, message };
   });
 }
 

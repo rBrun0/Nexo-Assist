@@ -98,6 +98,7 @@ export function EmployeePage({
                   <EmployeeMessageList
                     messages={chat.messages}
                     isSendingMessage={chat.isAwaitingAssistant || chat.isEndingConversation}
+                    isMutatingDraft={chat.isMutatingDraft}
                     agentActivitySteps={chat.agentActivitySteps}
                     streamedResponseText={chat.streamedResponseText}
                     peerIsTyping={chat.peerIsTyping}

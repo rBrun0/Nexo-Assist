@@ -19,6 +19,7 @@ import type {
 export function EmployeeMessageList({
   messages,
   isSendingMessage,
+  isMutatingDraft = false,
   agentActivitySteps,
   streamedResponseText,
   peerIsTyping = false,
@@ -33,6 +34,7 @@ export function EmployeeMessageList({
 }: {
   messages: ChatHistoryMessage[];
   isSendingMessage: boolean;
+  isMutatingDraft?: boolean;
   agentActivitySteps: AgentActivityStep[];
   streamedResponseText: string;
   peerIsTyping?: boolean;
@@ -54,7 +56,8 @@ export function EmployeeMessageList({
         const isInteractiveAssistantMessage =
           isAssistantMessage &&
           chatMessage.id === lastInteractiveAssistantMessageId &&
-          !isSendingMessage;
+          !isSendingMessage &&
+          !isMutatingDraft;
         const senderLabel = isAssistantMessage
           ? "Nexo Assist"
           : chatMessage.sender === "ANALYST"
@@ -81,7 +84,7 @@ export function EmployeeMessageList({
                 createdAt={chatMessage.createdAt}
                 metadata={chatMessage.metadata}
                 interactive={isInteractiveAssistantMessage}
-                disabled={isSendingMessage}
+                disabled={isSendingMessage || isMutatingDraft}
                 onOptionSelect={onOptionSelect}
                 onTicketSelect={onTicketSelect}
                 onArticleSelect={onArticleSelect}

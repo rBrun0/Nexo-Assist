@@ -1,7 +1,4 @@
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-} from "ai";
+import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
 import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 
@@ -10,16 +7,16 @@ import { runServiceDeskAgent } from "@/lib/agent/run-service-desk-agent";
 import { requireUser } from "@/lib/auth/session";
 import { AppErrors, jsonError } from "@/lib/errors";
 import {
-  createEmployeeMessage,
   cancelTicketDraft,
+  createEmployeeMessage,
   createTicketFromDraft,
   endEmployeeConversation,
   getEmployeeConversation,
   requestAnalystHandoff,
 } from "@/lib/services/conversations";
 import {
-  employeeMessageSchema,
   employeeConversationActionSchema,
+  employeeMessageSchema,
 } from "@/lib/validations/conversation";
 
 export async function GET() {
@@ -55,53 +52,72 @@ export async function POST(request: Request) {
     const user = userResult.data;
 
     if (typeof body === "object" && body !== null && "action" in body) {
-      const action = employeeConversationActionSchema.safeParse(body);
-      if (!action.success) {
-        return jsonError(AppErrors.invalidConversationAction);
-      }
+      try {
+        const action = employeeConversationActionSchema.safeParse(body);
+        if (!action.success) {
+          return jsonError(AppErrors.invalidConversationAction);
+        }
 
-      if (action.data.action === "request_analyst") {
-        const handoff = await requestAnalystHandoff(
-          user.id,
-          action.data.reason ??
-            "Funcionário solicitou atendimento humano pelo limite da conversa.",
-        );
-        if (!handoff.success) {
-          return jsonError(handoff.error);
+        if (action.data.action === "request_analyst") {
+          const handoff = await requestAnalystHandoff(
+            user.id,
+            action.data.reason ??
+              "Funcionário solicitou atendimento humano pelo limite da conversa.",
+          );
+          if (!handoff.success) {
+            return jsonError(handoff.error);
+          }
+          return NextResponse.json({ conversation: handoff.data });
         }
-        return NextResponse.json({ conversation: handoff.data });
-      }
 
-      if (action.data.action === "end_conversation") {
-        const ended = await endEmployeeConversation(user.id);
-        if (!ended.success) {
-          return jsonError(ended.error);
+        if (action.data.action === "end_conversation") {
+          const ended = await endEmployeeConversation(user.id);
+          if (!ended.success) {
+            return jsonError(ended.error);
+          }
+          return NextResponse.json({ conversation: null });
         }
-        return NextResponse.json({ conversation: null });
-      }
 
-      if (action.data.action === "cancel_ticket") {
-        const cancelled = await cancelTicketDraft(
-          user.id,
-          action.data.draftMessageId,
-        );
-        if (!cancelled.success) {
-          return jsonError(cancelled.error);
+        if (action.data.action === "cancel_ticket") {
+          const cancelled = await cancelTicketDraft(user.id, action.data.draftMessageId);
+          if (!cancelled.success) {
+            return jsonError(cancelled.error);
+          }
+        } else {
+          const confirmed = await createTicketFromDraft(user.id, action.data.draftMessageId);
+          if (!confirmed.success) {
+            return jsonError(confirmed.error);
+          }
         }
-      } else {
-        const confirmed = await createTicketFromDraft(
-          user.id,
-          action.data.draftMessageId,
-        );
-        if (!confirmed.success) {
-          return jsonError(confirmed.error);
+        const conversation = await getEmployeeConversation(user.id);
+        if (!conversation) {
+          return jsonError(AppErrors.conversationNotFound);
         }
+        return NextResponse.json({ conversation });
+      } catch (error) {
+        unstable_rethrow(error);
+        console.error("Falha ao executar ação da conversa:", error);
+        const actionName =
+          typeof body === "object" &&
+          body !== null &&
+          "action" in body &&
+          typeof body.action === "string"
+            ? body.action
+            : "";
+        if (actionName === "confirm_ticket") {
+          return jsonError(AppErrors.confirmTicketFailed);
+        }
+        if (actionName === "cancel_ticket") {
+          return jsonError(AppErrors.cancelDraftFailed);
+        }
+        if (actionName === "request_analyst") {
+          return jsonError(AppErrors.requestAnalystFailed);
+        }
+        if (actionName === "end_conversation") {
+          return jsonError(AppErrors.endConversationFailed);
+        }
+        return jsonError(AppErrors.confirmTicketFailed);
       }
-      const conversation = await getEmployeeConversation(user.id);
-      if (!conversation) {
-        return jsonError(AppErrors.conversationNotFound);
-      }
-      return NextResponse.json({ conversation });
     }
 
     const parsed = employeeMessageSchema.safeParse(body);
@@ -145,9 +161,7 @@ export async function POST(request: Request) {
         conversationId: session.id,
         status: session.status,
         motivo:
-          session.status === "BOT_ACTIVE"
-            ? "shouldRunAgent falso"
-            : `status ${session.status}`,
+          session.status === "BOT_ACTIVE" ? "shouldRunAgent falso" : `status ${session.status}`,
       });
     }
 
