@@ -1,19 +1,19 @@
 import "dotenv/config";
 
+import { PrismaPg } from "@prisma/adapter-pg";
 import {
   ChatStatus,
   MessageSender,
-  PrismaClient,
   Priority,
+  PrismaClient,
   Role,
   TicketCategory,
   TicketStatus,
   TicketType,
 } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
-import { ANALYST_LEVELS } from "../lib/constants";
 import { hashPassword } from "../lib/auth/password";
+import { ANALYST_LEVELS } from "../lib/constants";
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -25,14 +25,10 @@ function getDemoPassword(): string {
     process.env.DEMO_USER_PASSWORD ??
     (process.env.NODE_ENV === "production" ? undefined : "123456");
   if (!password) {
-    throw new Error(
-      "Defina DEMO_USER_PASSWORD antes de executar o seed em produção.",
-    );
+    throw new Error("Defina DEMO_USER_PASSWORD antes de executar o seed em produção.");
   }
   if (process.env.NODE_ENV === "production" && password.length < 12) {
-    throw new Error(
-      "DEMO_USER_PASSWORD deve ter pelo menos 12 caracteres em produção.",
-    );
+    throw new Error("DEMO_USER_PASSWORD deve ter pelo menos 12 caracteres em produção.");
   }
   return password;
 }
@@ -136,35 +132,27 @@ const demoAccounts = [
 
 async function main() {
   const password = hashPassword(demoPassword);
-  const [
-    employee1,
-    employee2,
-    employee3,
-    employee4,
-    employee5,
-    employee6,
-    analyst,
-    analyst2,
-  ] = await Promise.all(
-    demoAccounts.map((account) =>
-      prisma.user.upsert({
-        where: { email: account.email },
-        update: {
-          name: account.name,
-          job: account.job,
-          role: account.role,
-          password,
-        },
-        create: {
-          email: account.email,
-          name: account.name,
-          job: account.job,
-          role: account.role,
-          password,
-        },
-      }),
-    ),
-  );
+  const [employee1, employee2, employee3, employee4, employee5, employee6, analyst, analyst2] =
+    await Promise.all(
+      demoAccounts.map((account) =>
+        prisma.user.upsert({
+          where: { email: account.email },
+          update: {
+            name: account.name,
+            job: account.job,
+            role: account.role,
+            password,
+          },
+          create: {
+            email: account.email,
+            name: account.name,
+            job: account.job,
+            role: account.role,
+            password,
+          },
+        }),
+      ),
+    );
 
   const articles = [
     {
@@ -263,248 +251,236 @@ async function main() {
   const oneWeekAgo = daysAgo(7);
   const twoWeeksAgo = daysAgo(14);
 
-  const [
-    ticketCarlosOverdue,
-    ,
-    ,
-    ,
-    ticketBrunoInProgress,
-    ,
-    ,
-    ,
-    ticketEduardo,
-  ] = await Promise.all([
-    prisma.ticket.upsert({
-      where: { code: "INC-20311" },
-      update: {
-        title: "Notebook lento após atualização do Windows",
-        status: TicketStatus.WAITING_ANALYST,
-        priority: Priority.MEDIUM,
-        category: TicketCategory.HARDWARE,
-        slaDeadline: sixDaysAgo,
-        isOverdue: true,
-        updatedAt: sixDaysAgo,
-      },
-      create: {
-        code: "INC-20311",
-        title: "Notebook lento após atualização do Windows",
-        description:
-          "Após a última atualização do Windows 11, o notebook leva 15 minutos para inicializar e os programas travam constantemente.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.HARDWARE,
-        priority: Priority.MEDIUM,
-        status: TicketStatus.WAITING_ANALYST,
-        slaDeadline: sixDaysAgo,
-        isOverdue: true,
-        createdAt: sixDaysAgo,
-        updatedAt: sixDaysAgo,
-        createdById: employee1.id,
-        affectedUsers: { connect: [{ id: employee1.id }] },
-      },
-    }),
-    prisma.ticket.upsert({
-      where: { code: "REQ-10442" },
-      update: {
-        title: "Segundo monitor para home office",
-        status: TicketStatus.APPROVED,
-        priority: Priority.LOW,
-        category: TicketCategory.HARDWARE,
-        updatedAt: oneWeekAgo,
-      },
-      create: {
-        code: "REQ-10442",
-        title: "Segundo monitor para home office",
-        description:
-          "Solicitação de monitor adicional de 24 polegadas para setup de trabalho remoto.",
-        type: TicketType.REQUEST,
-        category: TicketCategory.HARDWARE,
-        priority: Priority.LOW,
-        status: TicketStatus.APPROVED,
-        slaDeadline: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
-        createdAt: oneWeekAgo,
-        updatedAt: oneWeekAgo,
-        createdById: employee1.id,
-        affectedUsers: { connect: [{ id: employee1.id }] },
-      },
-    }),
-    prisma.ticket.upsert({
-      where: { code: "INC-20150" },
-      update: {
-        title: "Senha do SAP bloqueada",
-        status: TicketStatus.RESOLVED,
-        priority: Priority.MEDIUM,
-        category: TicketCategory.ACCESS,
-        updatedAt: fourDaysAgo,
-      },
-      create: {
-        code: "INC-20150",
-        title: "Senha do SAP bloqueada",
-        description:
-          "Tentativas incorretas de senha causaram o bloqueio do usuário no ambiente de produção.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.ACCESS,
-        priority: Priority.MEDIUM,
-        status: TicketStatus.RESOLVED,
-        slaDeadline: fourDaysAgo,
-        createdAt: fourDaysAgo,
-        updatedAt: fourDaysAgo,
-        createdById: employee2.id,
-        affectedUsers: { connect: [{ id: employee2.id }] },
-      },
-    }),
-    prisma.ticket.upsert({
-      where: { code: "INC-19880" },
-      update: {
-        title: "Outlook não sincroniza no notebook",
-        status: TicketStatus.OPEN,
-        updatedAt: now,
-      },
-      create: {
-        code: "INC-19880",
-        title: "Outlook não sincroniza no notebook",
-        description:
-          "O Outlook da Ana fica offline intermitentemente desde a migração de tenant.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.EMAIL,
-        priority: Priority.HIGH,
-        status: TicketStatus.OPEN,
-        slaDeadline: new Date(now.getTime() + 4 * 60 * 60 * 1000),
-        isOverdue: false,
-        createdById: employee2.id,
-        affectedUsers: { connect: [{ id: employee2.id }] },
-      },
-    }),
-    // Bruno — chamado em andamento (conversa HUMAN_ACTIVE)
-    prisma.ticket.upsert({
-      where: { code: "INC-20510" },
-      update: {
-        title: "Impressora do setor offline",
-        status: TicketStatus.IN_PROGRESS,
-        priority: Priority.HIGH,
-        category: TicketCategory.HARDWARE,
-        updatedAt: hoursAgo(2),
-      },
-      create: {
-        code: "INC-20510",
-        title: "Impressora do setor offline",
-        description:
-          "A impressora HP do andar de Operações não aparece na rede desde ontem.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.HARDWARE,
-        priority: Priority.HIGH,
-        status: TicketStatus.IN_PROGRESS,
-        slaDeadline: new Date(now.getTime() + 2 * 60 * 60 * 1000),
-        isOverdue: false,
-        createdAt: hoursAgo(5),
-        updatedAt: hoursAgo(2),
-        createdById: employee3.id,
-        affectedUsers: { connect: [{ id: employee3.id }] },
-      },
-    }),
-    // Carlos — extras para “Ver todos…” no aside (>2 outros)
-    prisma.ticket.upsert({
-      where: { code: "REQ-10501" },
-      update: {
-        title: "Instalação do Adobe Acrobat",
-        status: TicketStatus.OPEN,
-        priority: Priority.LOW,
-        category: TicketCategory.SOFTWARE,
-        updatedAt: daysAgo(2),
-      },
-      create: {
-        code: "REQ-10501",
-        title: "Instalação do Adobe Acrobat",
-        description:
-          "Preciso do Acrobat Pro para assinar contratos do financeiro.",
-        type: TicketType.REQUEST,
-        category: TicketCategory.SOFTWARE,
-        priority: Priority.LOW,
-        status: TicketStatus.OPEN,
-        slaDeadline: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
-        createdAt: daysAgo(2),
-        updatedAt: daysAgo(2),
-        createdById: employee1.id,
-        affectedUsers: { connect: [{ id: employee1.id }] },
-      },
-    }),
-    prisma.ticket.upsert({
-      where: { code: "INC-20440" },
-      update: {
-        title: "VPN cai ao conectar em home office",
-        status: TicketStatus.OPEN,
-        priority: Priority.CRITICAL,
-        category: TicketCategory.NETWORK_VPN,
-        updatedAt: hoursAgo(1),
-      },
-      create: {
-        code: "INC-20440",
-        title: "VPN cai ao conectar em home office",
-        description:
-          "Erro 809 ao conectar na VPN; equipe financeira sem acesso aos sistemas.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.NETWORK_VPN,
-        priority: Priority.CRITICAL,
-        status: TicketStatus.OPEN,
-        slaDeadline: new Date(now.getTime() + 45 * 60 * 1000),
-        isOverdue: false,
-        createdAt: hoursAgo(1),
-        updatedAt: hoursAgo(1),
-        createdById: employee1.id,
-        affectedUsers: { connect: [{ id: employee1.id }] },
-      },
-    }),
-    // Fechado — cobertura de status CLOSED / OTHER
-    prisma.ticket.upsert({
-      where: { code: "REQ-19001" },
-      update: {
-        title: "Solicitação de crachá provisório",
-        status: TicketStatus.CLOSED,
-        priority: Priority.LOW,
-        category: TicketCategory.OTHER,
-        updatedAt: twoWeeksAgo,
-      },
-      create: {
-        code: "REQ-19001",
-        title: "Solicitação de crachá provisório",
-        description: "Crachá extraviado; emitido provisório e depois permanente.",
-        type: TicketType.REQUEST,
-        category: TicketCategory.OTHER,
-        priority: Priority.LOW,
-        status: TicketStatus.CLOSED,
-        slaDeadline: twoWeeksAgo,
-        createdAt: daysAgo(20),
-        updatedAt: twoWeeksAgo,
-        createdById: employee1.id,
-        affectedUsers: { connect: [{ id: employee1.id }] },
-      },
-    }),
-    // Eduardo — ticket vinculado à conversa do outro analista
-    prisma.ticket.upsert({
-      where: { code: "INC-20620" },
-      update: {
-        title: "Acesso ao CRM comercial negado",
-        status: TicketStatus.IN_PROGRESS,
-        priority: Priority.MEDIUM,
-        category: TicketCategory.ACCESS,
-        updatedAt: hoursAgo(3),
-      },
-      create: {
-        code: "INC-20620",
-        title: "Acesso ao CRM comercial negado",
-        description:
-          "Após troca de área, o acesso ao CRM não foi provisionado.",
-        type: TicketType.INCIDENT,
-        category: TicketCategory.ACCESS,
-        priority: Priority.MEDIUM,
-        status: TicketStatus.IN_PROGRESS,
-        slaDeadline: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-        createdAt: hoursAgo(8),
-        updatedAt: hoursAgo(3),
-        createdById: employee5.id,
-        affectedUsers: { connect: [{ id: employee5.id }] },
-      },
-    }),
-  ]);
+  const [ticketCarlosOverdue, , , , ticketBrunoInProgress, , , , ticketEduardo] = await Promise.all(
+    [
+      prisma.ticket.upsert({
+        where: { code: "INC-20311" },
+        update: {
+          title: "Notebook lento após atualização do Windows",
+          status: TicketStatus.WAITING_ANALYST,
+          priority: Priority.MEDIUM,
+          category: TicketCategory.HARDWARE,
+          slaDeadline: sixDaysAgo,
+          isOverdue: true,
+          updatedAt: sixDaysAgo,
+        },
+        create: {
+          code: "INC-20311",
+          title: "Notebook lento após atualização do Windows",
+          description:
+            "Após a última atualização do Windows 11, o notebook leva 15 minutos para inicializar e os programas travam constantemente.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.HARDWARE,
+          priority: Priority.MEDIUM,
+          status: TicketStatus.WAITING_ANALYST,
+          slaDeadline: sixDaysAgo,
+          isOverdue: true,
+          createdAt: sixDaysAgo,
+          updatedAt: sixDaysAgo,
+          createdById: employee1.id,
+          affectedUsers: { connect: [{ id: employee1.id }] },
+        },
+      }),
+      prisma.ticket.upsert({
+        where: { code: "REQ-10442" },
+        update: {
+          title: "Segundo monitor para home office",
+          status: TicketStatus.APPROVED,
+          priority: Priority.LOW,
+          category: TicketCategory.HARDWARE,
+          updatedAt: oneWeekAgo,
+        },
+        create: {
+          code: "REQ-10442",
+          title: "Segundo monitor para home office",
+          description:
+            "Solicitação de monitor adicional de 24 polegadas para setup de trabalho remoto.",
+          type: TicketType.REQUEST,
+          category: TicketCategory.HARDWARE,
+          priority: Priority.LOW,
+          status: TicketStatus.APPROVED,
+          slaDeadline: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+          createdAt: oneWeekAgo,
+          updatedAt: oneWeekAgo,
+          createdById: employee1.id,
+          affectedUsers: { connect: [{ id: employee1.id }] },
+        },
+      }),
+      prisma.ticket.upsert({
+        where: { code: "INC-20150" },
+        update: {
+          title: "Senha do SAP bloqueada",
+          status: TicketStatus.RESOLVED,
+          priority: Priority.MEDIUM,
+          category: TicketCategory.ACCESS,
+          updatedAt: fourDaysAgo,
+        },
+        create: {
+          code: "INC-20150",
+          title: "Senha do SAP bloqueada",
+          description:
+            "Tentativas incorretas de senha causaram o bloqueio do usuário no ambiente de produção.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.ACCESS,
+          priority: Priority.MEDIUM,
+          status: TicketStatus.RESOLVED,
+          slaDeadline: fourDaysAgo,
+          createdAt: fourDaysAgo,
+          updatedAt: fourDaysAgo,
+          createdById: employee2.id,
+          affectedUsers: { connect: [{ id: employee2.id }] },
+        },
+      }),
+      prisma.ticket.upsert({
+        where: { code: "INC-19880" },
+        update: {
+          title: "Outlook não sincroniza no notebook",
+          status: TicketStatus.OPEN,
+          updatedAt: now,
+        },
+        create: {
+          code: "INC-19880",
+          title: "Outlook não sincroniza no notebook",
+          description:
+            "O Outlook da Ana fica offline intermitentemente desde a migração de tenant.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.EMAIL,
+          priority: Priority.HIGH,
+          status: TicketStatus.OPEN,
+          slaDeadline: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+          isOverdue: false,
+          createdById: employee2.id,
+          affectedUsers: { connect: [{ id: employee2.id }] },
+        },
+      }),
+      // Bruno — chamado em andamento (conversa HUMAN_ACTIVE)
+      prisma.ticket.upsert({
+        where: { code: "INC-20510" },
+        update: {
+          title: "Impressora do setor offline",
+          status: TicketStatus.IN_PROGRESS,
+          priority: Priority.HIGH,
+          category: TicketCategory.HARDWARE,
+          updatedAt: hoursAgo(2),
+        },
+        create: {
+          code: "INC-20510",
+          title: "Impressora do setor offline",
+          description: "A impressora HP do andar de Operações não aparece na rede desde ontem.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.HARDWARE,
+          priority: Priority.HIGH,
+          status: TicketStatus.IN_PROGRESS,
+          slaDeadline: new Date(now.getTime() + 2 * 60 * 60 * 1000),
+          isOverdue: false,
+          createdAt: hoursAgo(5),
+          updatedAt: hoursAgo(2),
+          createdById: employee3.id,
+          affectedUsers: { connect: [{ id: employee3.id }] },
+        },
+      }),
+      // Carlos — extras para “Ver todos…” no aside (>2 outros)
+      prisma.ticket.upsert({
+        where: { code: "REQ-10501" },
+        update: {
+          title: "Instalação do Adobe Acrobat",
+          status: TicketStatus.OPEN,
+          priority: Priority.LOW,
+          category: TicketCategory.SOFTWARE,
+          updatedAt: daysAgo(2),
+        },
+        create: {
+          code: "REQ-10501",
+          title: "Instalação do Adobe Acrobat",
+          description: "Preciso do Acrobat Pro para assinar contratos do financeiro.",
+          type: TicketType.REQUEST,
+          category: TicketCategory.SOFTWARE,
+          priority: Priority.LOW,
+          status: TicketStatus.OPEN,
+          slaDeadline: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: daysAgo(2),
+          updatedAt: daysAgo(2),
+          createdById: employee1.id,
+          affectedUsers: { connect: [{ id: employee1.id }] },
+        },
+      }),
+      prisma.ticket.upsert({
+        where: { code: "INC-20440" },
+        update: {
+          title: "VPN cai ao conectar em home office",
+          status: TicketStatus.OPEN,
+          priority: Priority.CRITICAL,
+          category: TicketCategory.NETWORK_VPN,
+          updatedAt: hoursAgo(1),
+        },
+        create: {
+          code: "INC-20440",
+          title: "VPN cai ao conectar em home office",
+          description: "Erro 809 ao conectar na VPN; equipe financeira sem acesso aos sistemas.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.NETWORK_VPN,
+          priority: Priority.CRITICAL,
+          status: TicketStatus.OPEN,
+          slaDeadline: new Date(now.getTime() + 45 * 60 * 1000),
+          isOverdue: false,
+          createdAt: hoursAgo(1),
+          updatedAt: hoursAgo(1),
+          createdById: employee1.id,
+          affectedUsers: { connect: [{ id: employee1.id }] },
+        },
+      }),
+      // Fechado — cobertura de status CLOSED / OTHER
+      prisma.ticket.upsert({
+        where: { code: "REQ-19001" },
+        update: {
+          title: "Solicitação de crachá provisório",
+          status: TicketStatus.CLOSED,
+          priority: Priority.LOW,
+          category: TicketCategory.OTHER,
+          updatedAt: twoWeeksAgo,
+        },
+        create: {
+          code: "REQ-19001",
+          title: "Solicitação de crachá provisório",
+          description: "Crachá extraviado; emitido provisório e depois permanente.",
+          type: TicketType.REQUEST,
+          category: TicketCategory.OTHER,
+          priority: Priority.LOW,
+          status: TicketStatus.CLOSED,
+          slaDeadline: twoWeeksAgo,
+          createdAt: daysAgo(20),
+          updatedAt: twoWeeksAgo,
+          createdById: employee1.id,
+          affectedUsers: { connect: [{ id: employee1.id }] },
+        },
+      }),
+      // Eduardo — ticket vinculado à conversa do outro analista
+      prisma.ticket.upsert({
+        where: { code: "INC-20620" },
+        update: {
+          title: "Acesso ao CRM comercial negado",
+          status: TicketStatus.IN_PROGRESS,
+          priority: Priority.MEDIUM,
+          category: TicketCategory.ACCESS,
+          updatedAt: hoursAgo(3),
+        },
+        create: {
+          code: "INC-20620",
+          title: "Acesso ao CRM comercial negado",
+          description: "Após troca de área, o acesso ao CRM não foi provisionado.",
+          type: TicketType.INCIDENT,
+          category: TicketCategory.ACCESS,
+          priority: Priority.MEDIUM,
+          status: TicketStatus.IN_PROGRESS,
+          slaDeadline: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: hoursAgo(8),
+          updatedAt: hoursAgo(3),
+          createdById: employee5.id,
+          affectedUsers: { connect: [{ id: employee5.id }] },
+        },
+      }),
+    ],
+  );
 
   // --- Conversas (1 ativa por employee; CLOSED histórico do Carlos) ---
 
@@ -596,8 +572,7 @@ async function main() {
         status: ChatStatus.WAITING_HUMAN,
         ticketId: null,
         assignedAnalystId: null,
-        handoffSummary:
-          "Descrição ambígua sobre “sistema interno” sem logs; confiança baixa.",
+        handoffSummary: "Descrição ambígua sobre “sistema interno” sem logs; confiança baixa.",
         handoffReason: "Baixa confiança do agente.",
         handoffAt: minutesAgo(12),
         confidenceScore: 40,
@@ -608,8 +583,7 @@ async function main() {
         id: SEED_IDS.sessions.dianaWaitingLow,
         userId: employee4.id,
         status: ChatStatus.WAITING_HUMAN,
-        handoffSummary:
-          "Descrição ambígua sobre “sistema interno” sem logs; confiança baixa.",
+        handoffSummary: "Descrição ambígua sobre “sistema interno” sem logs; confiança baixa.",
         handoffReason: "Baixa confiança do agente.",
         handoffAt: minutesAgo(12),
         confidenceScore: 40,
@@ -645,7 +619,7 @@ async function main() {
         updatedAt: minutesAgo(15),
       },
     }),
-    // Fernanda — WAITING sem ticket, conf alta → "Transferência · contato em 25 min"
+    // Fernanda — WAITING sem ticket, conf alta → "Transferida · contato em 25 min"
     prisma.chatSession.upsert({
       where: { id: SEED_IDS.sessions.fernandaWaitingTimer },
       update: {
@@ -653,8 +627,7 @@ async function main() {
         status: ChatStatus.WAITING_HUMAN,
         ticketId: null,
         assignedAnalystId: null,
-        handoffSummary:
-          "Dúvida sobre liberação de ferramenta de design; handoff preventivo.",
+        handoffSummary: "Dúvida sobre liberação de ferramenta de design; handoff preventivo.",
         handoffReason: "Colaboradora pediu atendimento humano.",
         handoffAt: minutesAgo(25),
         confidenceScore: 70,
@@ -665,8 +638,7 @@ async function main() {
         id: SEED_IDS.sessions.fernandaWaitingTimer,
         userId: employee6.id,
         status: ChatStatus.WAITING_HUMAN,
-        handoffSummary:
-          "Dúvida sobre liberação de ferramenta de design; handoff preventivo.",
+        handoffSummary: "Dúvida sobre liberação de ferramenta de design; handoff preventivo.",
         handoffReason: "Colaboradora pediu atendimento humano.",
         handoffAt: minutesAgo(25),
         confidenceScore: 70,
@@ -736,23 +708,19 @@ async function main() {
       { name: "list_my_tickets", label: "Consultou chamados da Ana" },
     ],
     confidence: "high",
-    rationale:
-      "Há artigo de caixa cheia e chamado OPEN de Outlook; sugerir passos e status.",
+    rationale: "Há artigo de caixa cheia e chamado OPEN de Outlook; sugerir passos e status.",
   };
 
   const anaTicketStatusMetadata = {
     kind: "ticket_status" as const,
     ticket: {
-      id: (
-        await prisma.ticket.findUniqueOrThrow({ where: { code: "INC-19880" } })
-      ).id,
+      id: (await prisma.ticket.findUniqueOrThrow({ where: { code: "INC-19880" } })).id,
       code: "INC-19880",
       title: "Outlook não sincroniza no notebook",
       status: "Aberto",
       priority: "Alta",
       category: "E-mail",
-      description:
-        "O Outlook da Ana fica offline intermitentemente desde a migração de tenant.",
+      description: "O Outlook da Ana fica offline intermitentemente desde a migração de tenant.",
       isOverdue: false,
       updatedAt: now.toISOString(),
     },
@@ -770,8 +738,7 @@ async function main() {
         chatSessionId: SEED_IDS.sessions.carlosWaiting,
         sender: MessageSender.EMPLOYEE,
         senderUserId: employee1.id,
-        content:
-          "Meu notebook está muito lento depois da atualização do Windows.",
+        content: "Meu notebook está muito lento depois da atualização do Windows.",
         readAtByEmployee: hoursAgo(2),
         readAtByAnalyst: null,
         createdAt: hoursAgo(2),
@@ -781,8 +748,7 @@ async function main() {
         chatSessionId: SEED_IDS.sessions.carlosWaiting,
         sender: MessageSender.EMPLOYEE,
         senderUserId: employee1.id,
-        content:
-          "Meu notebook está muito lento depois da atualização do Windows.",
+        content: "Meu notebook está muito lento depois da atualização do Windows.",
         readAtByEmployee: hoursAgo(2),
         createdAt: hoursAgo(2),
       },
@@ -793,8 +759,7 @@ async function main() {
         chatSessionId: SEED_IDS.sessions.carlosWaiting,
         sender: MessageSender.ASSISTANT,
         senderUserId: null,
-        content:
-          "Encontrei o chamado INC-20311 (vencido). Vou transferir para o suporte N2.",
+        content: "Encontrei o chamado INC-20311 (vencido). Vou transferir para o suporte N2.",
         thoughtProcess: {
           actions: [
             { name: "list_my_tickets", label: "Consultou INC-20311" },
@@ -811,8 +776,7 @@ async function main() {
         id: SEED_IDS.messages.carlos2,
         chatSessionId: SEED_IDS.sessions.carlosWaiting,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Encontrei o chamado INC-20311 (vencido). Vou transferir para o suporte N2.",
+        content: "Encontrei o chamado INC-20311 (vencido). Vou transferir para o suporte N2.",
         thoughtProcess: {
           actions: [
             { name: "list_my_tickets", label: "Consultou INC-20311" },
@@ -891,8 +855,7 @@ async function main() {
       update: {
         chatSessionId: SEED_IDS.sessions.anaBot,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Há um artigo sobre caixa cheia e o chamado INC-19880 aberto. Quer ver o status?",
+        content: "Há um artigo sobre caixa cheia e o chamado INC-19880 aberto. Quer ver o status?",
         thoughtProcess: thoughtProcessAna,
         metadata: {
           kind: "article_refs",
@@ -911,8 +874,7 @@ async function main() {
         id: SEED_IDS.messages.ana2,
         chatSessionId: SEED_IDS.sessions.anaBot,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Há um artigo sobre caixa cheia e o chamado INC-19880 aberto. Quer ver o status?",
+        content: "Há um artigo sobre caixa cheia e o chamado INC-19880 aberto. Quer ver o status?",
         thoughtProcess: thoughtProcessAna,
         metadata: {
           kind: "article_refs",
@@ -1020,8 +982,7 @@ async function main() {
         chatSessionId: SEED_IDS.sessions.brunoHuman,
         sender: MessageSender.ANALYST,
         senderUserId: analyst.id,
-        content:
-          "Bruno, vou checar o switch do andar. A impressora é a HP LaserJet do corredor?",
+        content: "Bruno, vou checar o switch do andar. A impressora é a HP LaserJet do corredor?",
         readAtByEmployee: null,
         readAtByAnalyst: minutesAgo(8),
         createdAt: minutesAgo(8),
@@ -1031,8 +992,7 @@ async function main() {
         chatSessionId: SEED_IDS.sessions.brunoHuman,
         sender: MessageSender.ANALYST,
         senderUserId: analyst.id,
-        content:
-          "Bruno, vou checar o switch do andar. A impressora é a HP LaserJet do corredor?",
+        content: "Bruno, vou checar o switch do andar. A impressora é a HP LaserJet do corredor?",
         readAtByAnalyst: minutesAgo(8),
         createdAt: minutesAgo(8),
       },
@@ -1065,8 +1025,7 @@ async function main() {
       update: {
         chatSessionId: SEED_IDS.sessions.dianaWaitingLow,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Não consegui identificar o sistema com segurança. Vou pedir ajuda a um analista.",
+        content: "Não consegui identificar o sistema com segurança. Vou pedir ajuda a um analista.",
         thoughtProcess: {
           actions: [
             { name: "search_knowledge_base", label: "Buscou na base" },
@@ -1081,8 +1040,7 @@ async function main() {
         id: SEED_IDS.messages.diana2,
         chatSessionId: SEED_IDS.sessions.dianaWaitingLow,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Não consegui identificar o sistema com segurança. Vou pedir ajuda a um analista.",
+        content: "Não consegui identificar o sistema com segurança. Vou pedir ajuda a um analista.",
         thoughtProcess: {
           actions: [
             { name: "search_knowledge_base", label: "Buscou na base" },
@@ -1199,9 +1157,7 @@ async function main() {
         content:
           "Use a rede Nexo-Corp com suas credenciais. Problema resolvido pelo artigo da base.",
         thoughtProcess: {
-          actions: [
-            { name: "search_knowledge_base", label: "Buscou Wi-Fi corporativo" },
-          ],
+          actions: [{ name: "search_knowledge_base", label: "Buscou Wi-Fi corporativo" }],
           confidence: "high",
           rationale: "Artigo direto resolveu sem handoff.",
         },
@@ -1214,9 +1170,7 @@ async function main() {
         content:
           "Use a rede Nexo-Corp com suas credenciais. Problema resolvido pelo artigo da base.",
         thoughtProcess: {
-          actions: [
-            { name: "search_knowledge_base", label: "Buscou Wi-Fi corporativo" },
-          ],
+          actions: [{ name: "search_knowledge_base", label: "Buscou Wi-Fi corporativo" }],
           confidence: "high",
           rationale: "Artigo direto resolveu sem handoff.",
         },
@@ -1233,9 +1187,7 @@ async function main() {
         content:
           "Pronto — com as credenciais corporativas a rede Nexo-Corp deve conectar. Qualquer coisa, é só chamar.",
         thoughtProcess: {
-          actions: [
-            { name: "search_knowledge_base", label: "Confirmou artigo Wi-Fi" },
-          ],
+          actions: [{ name: "search_knowledge_base", label: "Confirmou artigo Wi-Fi" }],
           confidence: "high",
           rationale: "Encerramento pelo agente sem handoff.",
         },
@@ -1248,9 +1200,7 @@ async function main() {
         content:
           "Pronto — com as credenciais corporativas a rede Nexo-Corp deve conectar. Qualquer coisa, é só chamar.",
         thoughtProcess: {
-          actions: [
-            { name: "search_knowledge_base", label: "Confirmou artigo Wi-Fi" },
-          ],
+          actions: [{ name: "search_knowledge_base", label: "Confirmou artigo Wi-Fi" }],
           confidence: "high",
           rationale: "Encerramento pelo agente sem handoff.",
         },
@@ -1285,12 +1235,9 @@ async function main() {
       update: {
         chatSessionId: SEED_IDS.sessions.fernandaWaitingTimer,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Vou transferir para um analista confirmar a liberação no portal de softwares.",
+        content: "Vou transferir para um analista confirmar a liberação no portal de softwares.",
         thoughtProcess: {
-          actions: [
-            { name: "request_human_handoff", label: "Solicitou analista" },
-          ],
+          actions: [{ name: "request_human_handoff", label: "Solicitou analista" }],
           confidence: "medium",
           rationale: "Pedido explícito de liberação de software.",
         },
@@ -1300,12 +1247,9 @@ async function main() {
         id: SEED_IDS.messages.fernanda2,
         chatSessionId: SEED_IDS.sessions.fernandaWaitingTimer,
         sender: MessageSender.ASSISTANT,
-        content:
-          "Vou transferir para um analista confirmar a liberação no portal de softwares.",
+        content: "Vou transferir para um analista confirmar a liberação no portal de softwares.",
         thoughtProcess: {
-          actions: [
-            { name: "request_human_handoff", label: "Solicitou analista" },
-          ],
+          actions: [{ name: "request_human_handoff", label: "Solicitou analista" }],
           confidence: "medium",
           rationale: "Pedido explícito de liberação de software.",
         },

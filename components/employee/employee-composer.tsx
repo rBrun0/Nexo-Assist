@@ -1,9 +1,17 @@
 "use client";
 
-import { ArrowUp, Headphones } from "lucide-react";
+import { ArrowUp, Headphones, Info } from "lucide-react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { getEmployeeStatusUi } from "@/lib/chat/conversation-status";
 import type { EmployeeConversationStatus } from "@/lib/types/employee-conversation";
 import { Input } from "../ui/input";
@@ -50,8 +58,7 @@ export function EmployeeComposer({
     isRequestingAnalyst ||
     isEndingConversation;
 
-  const needsAnalystCta =
-    isAtMessageLimit && conversationStatus === "BOT_ACTIVE";
+  const needsAnalystCta = isAtMessageLimit && conversationStatus === "BOT_ACTIVE";
 
   const limitBanner =
     isAtMessageLimit && conversationStatus === "BOT_ACTIVE"
@@ -60,12 +67,51 @@ export function EmployeeComposer({
         ? "Esta conversa atingiu o limite de 30 mensagens. O analista pode encerrar para você abrir outra."
         : null;
 
-  const placeholder = isAtMessageLimit
-    ? "Limite de mensagens atingido"
-    : statusUi.placeholder;
+  const placeholder = isAtMessageLimit ? "Limite de mensagens atingido" : statusUi.placeholder;
+
+  const waitingAnalyst = conversationStatus === "WAITING_HUMAN";
 
   return (
     <div className="shrink-0 bg-transparent px-2 pt-2 pb-5 sm:px-12 lg:px-44">
+      {waitingAnalyst && !limitBanner ? (
+        <div
+          role="status"
+          className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900"
+        >
+          <p className="min-w-0 flex-1 leading-5">
+            Um analista ainda não assumiu. Sua mensagem entra na fila e não tem resposta automática
+            até alguém atender.
+          </p>
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label="Sobre o limite de mensagens na fila"
+                  className="size-6 shrink-0 cursor-pointer text-amber-800 hover:bg-amber-100 hover:text-amber-950"
+                />
+              }
+            >
+              <Info className="size-3.5" />
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="top"
+              className="w-[min(18rem,calc(100vw-2rem))] gap-2 p-3"
+            >
+              <PopoverHeader>
+                <PopoverTitle className="text-sm text-slate-900">Limite da conversa</PopoverTitle>
+                <PopoverDescription className="text-[12px] leading-4 text-slate-500">
+                  Cada mensagem nesta fila conta no teto de {messageLimit} do episódio, mesmo sem
+                  resposta do analista.
+                </PopoverDescription>
+              </PopoverHeader>
+            </PopoverContent>
+          </Popover>
+        </div>
+      ) : null}
       {limitBanner ? (
         <div
           role="status"
@@ -77,35 +123,23 @@ export function EmployeeComposer({
               <Button
                 type="button"
                 size="sm"
-                disabled={
-                  isRequestingAnalyst ||
-                  isLoadingConversation ||
-                  isEndingConversation
-                }
+                disabled={isRequestingAnalyst || isLoadingConversation || isEndingConversation}
                 onClick={onRequestAnalyst}
                 className="h-8 gap-1.5 rounded-lg bg-brand-action text-white hover:bg-brand-action-hover"
               >
                 <Headphones className="size-3.5" />
-                {isRequestingAnalyst
-                  ? "Solicitando analista..."
-                  : "Falar com um analista"}
+                {isRequestingAnalyst ? "Solicitando analista..." : "Falar com um analista"}
               </Button>
               {onEndConversation ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  disabled={
-                    isEndingConversation ||
-                    isLoadingConversation ||
-                    isRequestingAnalyst
-                  }
+                  disabled={isEndingConversation || isLoadingConversation || isRequestingAnalyst}
                   onClick={onEndConversation}
                   className="h-8 rounded-lg"
                 >
-                  {isEndingConversation
-                    ? "Encerrando..."
-                    : "Encerrar e começar outra"}
+                  {isEndingConversation ? "Encerrando..." : "Encerrar e começar outra"}
                 </Button>
               ) : null}
             </div>
@@ -113,10 +147,7 @@ export function EmployeeComposer({
         </div>
       ) : null}
       {conversationError && !limitBanner ? (
-        <p
-          role="alert"
-          className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"
-        >
+        <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
           {conversationError}
         </p>
       ) : null}

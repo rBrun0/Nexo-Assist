@@ -20,19 +20,17 @@ function formatHandoffWait(handoffAt: string, now: number) {
 
   const hours = Math.floor(elapsedMinutes / 60);
   const minutes = elapsedMinutes % 60;
-  return minutes === 0
-    ? `contato em ${hours} h`
-    : `contato em ${hours} h ${minutes} min`;
+  return minutes === 0 ? `contato em ${hours} h` : `contato em ${hours} h ${minutes} min`;
 }
 
 export function getConversationStatusDetail(
   conversation: AnalystConversationStatusData,
   currentAnalystId: string,
-  now: number
+  now: number,
 ) {
   if (conversation.status === "Aguardando") {
     if (conversation.ticketCode) {
-      return `Transferida · ${conversation.ticketCode}`;
+      return "Transferida";
     }
 
     if (
@@ -43,8 +41,8 @@ export function getConversationStatusDetail(
     }
 
     return conversation.handoffAt
-      ? `Transferência · ${formatHandoffWait(conversation.handoffAt, now)}`
-      : "Transferência · aguardando analista";
+      ? `Transferida · ${formatHandoffWait(conversation.handoffAt, now)}`
+      : "Transferida · aguardando analista";
   }
 
   if (conversation.status === "Em atendimento") {
@@ -64,4 +62,21 @@ export function getConversationStatusDetail(
   return conversation.lastMessageSender === "ASSISTANT"
     ? "Resolvida pelo agente"
     : "Conversa encerrada";
+}
+
+/** Tom do detalhe na fila (Pen: danger-text / warning-text), não o status genérico. */
+export function getQueueHandoffDetailTone(
+  conversation: AnalystConversationStatusData,
+): "danger" | "warning" | null {
+  if (conversation.status !== "Aguardando") return null;
+
+  if (
+    !conversation.ticketCode &&
+    conversation.confidenceScore !== null &&
+    conversation.confidenceScore < LOW_CONFIDENCE_THRESHOLD
+  ) {
+    return "warning";
+  }
+
+  return "danger";
 }

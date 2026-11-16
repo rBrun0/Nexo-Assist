@@ -6,7 +6,7 @@ const me = "analyst-me";
 const other = "analyst-other";
 
 describe("getAnalystFooterUi", () => {
-  it("na fila: só Assumir; sem devolver nem composer", () => {
+  it("na fila: Assumir e Devolver; sem composer", () => {
     const ui = getAnalystFooterUi({
       status: "Aguardando",
       assignedAnalystId: null,
@@ -15,7 +15,7 @@ describe("getAnalystFooterUi", () => {
 
     expect(ui.showWaitingBanner).toBe(true);
     expect(ui.showClaimAction).toBe(true);
-    expect(ui.showReturnAction).toBe(false);
+    expect(ui.showReturnAction).toBe(true);
     expect(ui.showAssignedToolbar).toBe(false);
     expect(ui.canCompose).toBe(false);
     expect(ui.placeholder).toBe("Assuma a conversa para responder");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { getConversationStatusDetail } from "./conversation-status";
+import { getConversationStatusDetail, getQueueHandoffDetailTone } from "./conversation-status";
 
 const now = new Date("2026-11-07T20:00:00.000Z").getTime();
 
@@ -17,9 +17,9 @@ describe("getConversationStatusDetail", () => {
           lastMessageSender: "ASSISTANT",
         },
         "analyst-1",
-        now
-      )
-    ).toBe("Transferência · contato em 25 min");
+        now,
+      ),
+    ).toBe("Transferida · contato em 25 min");
   });
 
   it("prioriza o código do chamado na transferência", () => {
@@ -35,9 +35,9 @@ describe("getConversationStatusDetail", () => {
           ticketCode: "INC-20311",
         },
         "analyst-1",
-        now
-      )
-    ).toBe("Transferida · INC-20311");
+        now,
+      ),
+    ).toBe("Transferida");
   });
 
   it("mostra confiança baixa e agente solicitando ajuda", () => {
@@ -52,8 +52,8 @@ describe("getConversationStatusDetail", () => {
           lastMessageSender: "ASSISTANT",
         },
         "analyst-1",
-        now
-      )
+        now,
+      ),
     ).toBe("Agente pediu ajuda · confiança em 40%");
   });
 
@@ -67,12 +67,28 @@ describe("getConversationStatusDetail", () => {
       lastMessageSender: "ANALYST" as const,
     };
 
-    expect(getConversationStatusDetail(active, "analyst-1", now)).toBe(
-      "Você está atendendo"
+    expect(getConversationStatusDetail(active, "analyst-1", now)).toBe("Você está atendendo");
+    expect(getConversationStatusDetail(active, "analyst-2", now)).toBe("Ana Souza atendendo");
+  });
+
+  it("usa danger para Transferida e warning para pedido de ajuda", () => {
+    const waiting = {
+      status: "Aguardando" as const,
+      assignedAnalystId: null,
+      assignedTo: null,
+      handoffAt: new Date(now - 25 * 60_000).toISOString(),
+      confidenceScore: 100,
+      lastMessageSender: "ASSISTANT" as const,
+    };
+
+    expect(getQueueHandoffDetailTone(waiting)).toBe("danger");
+    expect(getQueueHandoffDetailTone({ ...waiting, ticketCode: "INC-1" })).toBe("danger");
+    expect(getQueueHandoffDetailTone({ ...waiting, confidenceScore: 40, ticketCode: null })).toBe(
+      "warning",
     );
-    expect(getConversationStatusDetail(active, "analyst-2", now)).toBe(
-      "Ana Souza atendendo"
-    );
+    expect(
+      getQueueHandoffDetailTone({ ...waiting, status: "Em atendimento", confidenceScore: 40 }),
+    ).toBeNull();
   });
 
   it("mostra quando o agente está atendendo", () => {
@@ -87,8 +103,8 @@ describe("getConversationStatusDetail", () => {
           lastMessageSender: "ASSISTANT",
         },
         "analyst-1",
-        now
-      )
+        now,
+      ),
     ).toBe("Agente atendendo");
   });
 
@@ -102,15 +118,9 @@ describe("getConversationStatusDetail", () => {
       lastMessageSender: "ASSISTANT" as const,
     };
 
-    expect(getConversationStatusDetail(closed, "analyst-1", now)).toBe(
-      "Resolvida pelo agente"
-    );
+    expect(getConversationStatusDetail(closed, "analyst-1", now)).toBe("Resolvida pelo agente");
     expect(
-      getConversationStatusDetail(
-        { ...closed, assignedAnalystId: "analyst-1" },
-        "analyst-1",
-        now
-      )
+      getConversationStatusDetail({ ...closed, assignedAnalystId: "analyst-1" }, "analyst-1", now),
     ).toBe("Resolvida pelo analista");
   });
 });

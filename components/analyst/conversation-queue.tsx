@@ -3,13 +3,17 @@
 import { Search } from "lucide-react";
 
 import { UserAvatar } from "@/components/chat/user-avatar";
-import { getConversationStatusDetail } from "@/lib/analyst/conversation-status";
-import { formatQueuePreview } from "@/lib/analyst/queue-preview";
+import { Badge } from "@/components/ui/badge";
 import {
+  getConversationStatusDetail,
+  getQueueHandoffDetailTone,
+} from "@/lib/analyst/conversation-status";
+import {
+  type AnalystConversationListItem,
   getConversationStatusTone,
   getConversationStatusToneClasses,
-  type AnalystConversationListItem,
 } from "@/lib/analyst/map-conversation";
+import { formatQueuePreview } from "@/lib/analyst/queue-preview";
 import { formatQueueTime } from "@/lib/chat/format-queue-time";
 import { cn } from "@/lib/utils";
 
@@ -34,12 +38,8 @@ export function ConversationQueue({
     return (
       <div className="px-5 py-12 text-center">
         <Search className="mx-auto size-5 text-slate-300" />
-        <p className="mt-3 text-xs font-medium text-slate-600">
-          Nenhuma conversa encontrada
-        </p>
-        <p className="mt-1 text-[11px] text-slate-400">
-          Tente buscar por outro nome.
-        </p>
+        <p className="mt-3 text-xs font-medium text-slate-600">Nenhuma conversa encontrada</p>
+        <p className="mt-1 text-[11px] text-slate-400">Tente buscar por outro nome.</p>
       </div>
     );
   }
@@ -51,11 +51,14 @@ export function ConversationQueue({
         const tone = getConversationStatusToneClasses(
           getConversationStatusTone(conversation.status),
         );
-        const statusDetail = getConversationStatusDetail(
-          conversation,
-          currentAnalystId,
-          now,
-        );
+        const statusDetail = getConversationStatusDetail(conversation, currentAnalystId, now);
+        const handoffTone = getQueueHandoffDetailTone(conversation);
+        const detailClasses =
+          handoffTone === "danger"
+            ? { text: "text-danger-text", dot: "bg-danger-text" }
+            : handoffTone === "warning"
+              ? { text: "text-warning-text", dot: "bg-warning-text" }
+              : { text: tone.text, dot: tone.dot };
         const queueTime = conversation.lastMessageAt
           ? formatQueueTime(conversation.lastMessageAt, now)
           : conversation.time;
@@ -83,13 +86,9 @@ export function ConversationQueue({
                   {conversation.name}
                 </span>
                 <span
-                  className={cn(
-                    "shrink-0 text-[11px] font-medium text-zinc-500",
-                    {
-                      "text-[12px] font-semibold text-brand-action":
-                        conversation.unread,
-                    },
-                  )}
+                  className={cn("shrink-0 text-[11px] font-medium text-zinc-500", {
+                    "text-[12px] font-semibold text-brand-action": conversation.unread,
+                  })}
                 >
                   {queueTime}
                 </span>
@@ -98,13 +97,10 @@ export function ConversationQueue({
                 <span
                   className={cn(
                     "truncate text-[11px] text-slate-500",
-                    typingBySessionId[conversation.id] &&
-                      "italic text-success",
+                    typingBySessionId[conversation.id] && "italic text-success",
                   )}
                 >
-                  {typingBySessionId[conversation.id]
-                    ? "digitando..."
-                    : preview}
+                  {typingBySessionId[conversation.id] ? "digitando..." : preview}
                 </span>
                 {conversation.unread > 0 && (
                   <span className="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-brand-action text-[10px] font-semibold text-white">
@@ -114,25 +110,23 @@ export function ConversationQueue({
               </span>
               <span className="flex flex-wrap items-center gap-1">
                 <div className="flex items-center">
-                  <span className={cn(tone.dot, "size-1.5 rounded-full")} />
+                  <span className={cn(detailClasses.dot, "size-1.5 rounded-full")} />
                   <span
                     className={cn(
                       "inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-medium",
-                      tone.text,
+                      detailClasses.text,
                     )}
                   >
                     {statusDetail}
                   </span>
                 </div>
                 {conversation.ticketCode ? (
-                  <span
-                    className={cn(
-                      "inline-flex rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium",
-                      tone.text,
-                    )}
+                  <Badge
+                    variant="secondary"
+                    className="h-auto rounded-md px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
                   >
                     {conversation.ticketCode}
-                  </span>
+                  </Badge>
                 ) : null}
               </span>
             </span>

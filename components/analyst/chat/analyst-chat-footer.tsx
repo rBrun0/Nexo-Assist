@@ -1,7 +1,8 @@
 "use client";
 
-import { Hand, Headset, Send } from "lucide-react";
+import { Bot, Hand, Headset, Send } from "lucide-react";
 import type { FormEvent } from "react";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
@@ -61,20 +62,67 @@ export function AnalystChatFooter({
               </div>
             </div>
           </div>
-          {footerUi.showClaimAction ? (
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                type="button"
-                size="lg"
-                disabled={isWorking}
-                onClick={() => onPerformAction("claim")}
-                className="h-8 text-[11px]"
-              >
-                <Headset className="size-3" />
-                <span>{workingAction === "claim" ? "Assumindo..." : "Assumir atendimento"}</span>
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-2">
+            {footerUi.showReturnAction ? (
+              <AlertDialog>
+                <AlertDialog.Trigger>
+                  <Button
+                    type="button"
+                    size="lg"
+                    variant="outline"
+                    disabled={isWorking}
+                    className="h-8 bg-white text-[11px]"
+                  >
+                    <Bot className="size-3" />
+                    <span>
+                      {workingAction === "return_to_bot" ? "Devolvendo..." : "Devolver ao agent"}
+                    </span>
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content>
+                  <AlertDialog.Header>
+                    <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
+                    <AlertDialog.Description>
+                      A fila de espera será cancelada e o Nexo Assist retomará o atendimento.
+                    </AlertDialog.Description>
+                  </AlertDialog.Header>
+                  <AlertDialog.Footer>
+                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                    <AlertDialog.Action onClick={() => onPerformAction("return_to_bot")}>
+                      Confirmar devolução
+                    </AlertDialog.Action>
+                  </AlertDialog.Footer>
+                </AlertDialog.Content>
+              </AlertDialog>
+            ) : null}
+            {footerUi.showClaimAction ? (
+              <AlertDialog>
+                <AlertDialog.Trigger>
+                  <Button type="button" size="lg" disabled={isWorking} className="h-8 text-[11px]">
+                    <Headset className="size-3" />
+                    <span>
+                      {workingAction === "claim" ? "Assumindo..." : "Assumir atendimento"}
+                    </span>
+                  </Button>
+                </AlertDialog.Trigger>
+                <AlertDialog.Content>
+                  <AlertDialog.Header>
+                    <AlertDialog.Title>Assumir atendimento?</AlertDialog.Title>
+                    <AlertDialog.Description>
+                      Você passa a controlar o chat. O Nexo Assist fica pausado até devolver ou
+                      encerrar.
+                    </AlertDialog.Description>
+                  </AlertDialog.Header>
+                  <AlertDialog.Footer>
+                    <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
+                    <AlertDialog.Action onClick={() => onPerformAction("claim")}>
+                      Assumir
+                    </AlertDialog.Action>
+                  </AlertDialog.Footer>
+                </AlertDialog.Content>
+              </AlertDialog>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

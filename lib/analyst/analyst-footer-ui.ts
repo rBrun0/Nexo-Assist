@@ -28,7 +28,7 @@ export function getAnalystFooterUi({
   return {
     showWaitingBanner: status === "Aguardando",
     showClaimAction: status === "Aguardando",
-    showReturnAction: isAssignedToMe,
+    showReturnAction: status === "Aguardando" || isAssignedToMe,
     showAssignedToolbar: isAssignedToMe,
     canCompose: isAssignedToMe,
     placeholder,

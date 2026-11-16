@@ -551,9 +551,10 @@ export function useEmployeeConversation({
     agentActivitySteps,
     isSendingMessage,
     isAwaitingAssistant:
-      Boolean(streamedResponseText.trim()) ||
-      chatStatus === "submitted" ||
-      chatStatus === "streaming",
+      !isHumanHandoffStatus(conversation?.status) &&
+      (Boolean(streamedResponseText.trim()) ||
+        chatStatus === "submitted" ||
+        chatStatus === "streaming"),
     isRequestingAnalyst,
     isEndingConversation,
     endedNotice,
