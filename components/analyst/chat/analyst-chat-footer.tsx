@@ -1,20 +1,13 @@
 "use client";
 
+import { Hand, Headset, Send } from "lucide-react";
 import type { FormEvent } from "react";
-import { Bot, Hand, Headset, Send } from "lucide-react";
-
-import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
-import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
-import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAnalystFooterUi } from "@/lib/analyst/analyst-footer-ui";
+import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation";
 
-type WorkingAction =
-  | "claim"
-  | "return_to_bot"
-  | "close"
-  | "send_message"
-  | null;
+type WorkingAction = "claim" | "return_to_bot" | "close" | "send_message" | null;
 
 export function AnalystChatFooter({
   conversation,
@@ -52,76 +45,36 @@ export function AnalystChatFooter({
       {footerUi.showWaitingBanner ? (
         <div className="mb-3 flex flex-col gap-3 rounded-lg px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="size-9 rounded-full bg-amber-500/10 flex items-center justify-center">
+            <div className="flex size-9 items-center justify-center rounded-full bg-amber-500/10">
               <Hand className="size-4 text-amber-800" />
             </div>
-            <div className="text-sm font-semibold flex flex-col">
+            <div className="flex flex-col text-sm font-semibold">
               <div>{firstName} está à espera de um atendente</div>
-              <div className="text-xs text-zinc-500 font-normal">
+              <div className="text-xs font-normal text-zinc-500">
                 <span>Agent pausado</span>
                 {handoffUntil ? (
                   <span>
                     {" "}
-                    ·{" "}
-                    {handoffUntil === "prazo vencido"
-                      ? handoffUntil
-                      : `até ${handoffUntil}`}
+                    · {handoffUntil === "prazo vencido" ? handoffUntil : `até ${handoffUntil}`}
                   </span>
                 ) : null}
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <AlertDialog>
-              <AlertDialog.Trigger>
-                <Button
-                  type="button"
-                  size={"lg"}
-                  variant="outline"
-                  disabled={isWorking}
-                  className="h-8 bg-white text-[11px]"
-                >
-                  <Bot className="size-3" />
-                  <span>
-                    {workingAction === "return_to_bot"
-                      ? "Devolvendo..."
-                      : "Devolver ao agent"}
-                  </span>
-                </Button>
-              </AlertDialog.Trigger>
-              <AlertDialog.Content>
-                <AlertDialog.Header>
-                  <AlertDialog.Title>Devolver ao agent?</AlertDialog.Title>
-                  <AlertDialog.Description>
-                    A fila de espera será cancelada e o Nexo Assist retomará o
-                    atendimento.
-                  </AlertDialog.Description>
-                </AlertDialog.Header>
-                <AlertDialog.Footer>
-                  <AlertDialog.Cancel>Cancelar</AlertDialog.Cancel>
-                  <AlertDialog.Action
-                    onClick={() => onPerformAction("return_to_bot")}
-                  >
-                    Confirmar devolução
-                  </AlertDialog.Action>
-                </AlertDialog.Footer>
-              </AlertDialog.Content>
-            </AlertDialog>
-            <Button
-              type="button"
-              size="sm"
-              disabled={isWorking}
-              onClick={() => onPerformAction("claim")}
-              className="h-8 text-[11px]"
-            >
-              <Headset className="size-3" />
-              <span>
-                {workingAction === "claim"
-                  ? "Assumindo..."
-                  : "Assumir atendimento"}
-              </span>
-            </Button>
-          </div>
+          {footerUi.showClaimAction ? (
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                type="button"
+                size="lg"
+                disabled={isWorking}
+                onClick={() => onPerformAction("claim")}
+                className="h-8 text-[11px]"
+              >
+                <Headset className="size-3" />
+                <span>{workingAction === "claim" ? "Assumindo..." : "Assumir atendimento"}</span>
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

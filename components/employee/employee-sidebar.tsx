@@ -3,6 +3,7 @@
 import { LogOut, MessageSquare, UserRound } from "lucide-react";
 import Link from "next/link";
 
+import { LogoutConfirmDialog } from "@/components/auth/logout-confirm-dialog";
 import { NexoMark } from "@/components/brand/nexo-mark";
 import { UserAvatar } from "@/components/chat/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { AlertDialog } from "../ui/alert-dialog";
 
 export function EmployeeSidebar({
   isProfilePage,
@@ -73,42 +73,19 @@ export function EmployeeSidebar({
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="mt-auto px-4 pb-2 gap-1">
+      <SidebarFooter className="mt-auto gap-1 px-4 pb-2">
         <SidebarSeparator className="mb-4 bg-slate-200" />
         <User name={employee.name} initials={employee.initials} email={employee.email} />
-        <AlertDialog>
-          <AlertDialog.Trigger>
-            <Button
-              variant="ghost"
-              // onClick={onLogout}
-              disabled={isLoggingOut}
-              className="h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut className="size-[17px]" />
-              {isLoggingOut ? "Saindo..." : "Sair"}
-            </Button>
-          </AlertDialog.Trigger>
-          <AlertDialog.Content>
-            <AlertDialog.Title>Tem certeza que deseja sair?</AlertDialog.Title>
-            <AlertDialog.Description>Você será deslogado da sua conta.</AlertDialog.Description>
-            <AlertDialog.Footer>
-              <div className="flex items-center justify-end gap-2">
-                <AlertDialog.Cancel className={"h-full"}>Cancelar</AlertDialog.Cancel>
-                {/* <AlertDialog.Action> */}
-                <Button
-                  variant="destructive"
-                  onClick={onLogout}
-                  disabled={isLoggingOut}
-                  className="mt-4 h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500"
-                >
-                  <LogOut className="size-[17px]" />
-                  {isLoggingOut ? "Saindo..." : "Sair"}
-                </Button>
-                {/* </AlertDialog.Action> */}
-              </div>
-            </AlertDialog.Footer>
-          </AlertDialog.Content>
-        </AlertDialog>
+        <LogoutConfirmDialog isLoggingOut={isLoggingOut} onLogout={onLogout}>
+          <Button
+            variant="ghost"
+            disabled={isLoggingOut}
+            className="h-10 w-full justify-start gap-3 rounded-lg px-3 text-[13px] font-medium text-slate-500 hover:bg-red-50 hover:text-red-600"
+          >
+            <LogOut className="size-[17px]" />
+            {isLoggingOut ? "Saindo..." : "Sair"}
+          </Button>
+        </LogoutConfirmDialog>
         {logoutError ? (
           <p role="alert" className="mt-2 text-xs text-red-600">
             {logoutError}

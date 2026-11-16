@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 
+import { AnalystAccountPopover } from "@/components/analyst/analyst-account-popover";
 import { ConversationQueue } from "@/components/analyst/conversation-queue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,9 @@ export function AnalystQueuePanel({
   filteredConversations,
   selectedId,
   currentAnalystId,
+  currentAnalystName,
+  currentAnalystEmail,
+  currentAnalystJob,
   now,
   search,
   conversationFilter,
@@ -36,6 +40,9 @@ export function AnalystQueuePanel({
   filteredConversations: AnalystConversationListItem[];
   selectedId: string | null;
   currentAnalystId: string;
+  currentAnalystName: string;
+  currentAnalystEmail: string;
+  currentAnalystJob: string | null;
   now: number;
   search: string;
   conversationFilter: ConversationFilter;
@@ -57,13 +64,25 @@ export function AnalystQueuePanel({
       <div className="border-b border-slate-100 px-4 pt-5 pb-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-slate-900">Conversas</h2>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
-            aria-label="Status: disponível"
-          >
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
-            Disponível
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+              aria-label="Status: disponível"
+            >
+              <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden />
+              Disponível
+            </span>
+            <div className="sm:hidden">
+              <AnalystAccountPopover
+                name={currentAnalystName}
+                email={currentAnalystEmail}
+                job={currentAnalystJob}
+                side="bottom"
+                align="end"
+                avatarClassName="size-8 text-[10px]"
+              />
+            </div>
+          </div>
         </div>
         <div className="relative mt-4">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />

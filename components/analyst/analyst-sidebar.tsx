@@ -3,8 +3,9 @@
 import { LogOut, MessageCircle } from "lucide-react";
 import Link from "next/link";
 
+import { AnalystAccountPopover } from "@/components/analyst/analyst-account-popover";
+import { LogoutConfirmDialog } from "@/components/auth/logout-confirm-dialog";
 import { NexoMark } from "@/components/brand/nexo-mark";
-import { UserAvatar } from "@/components/chat/user-avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -15,22 +16,24 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { getInitials } from "@/lib/format/person-name";
 
 export function AnalystSidebar({
   currentAnalystName,
+  currentAnalystEmail,
+  currentAnalystJob,
   conversationsWithUnread = 0,
   logoutError,
   isLoggingOut,
   onLogout,
 }: {
   currentAnalystName: string;
+  currentAnalystEmail: string;
+  currentAnalystJob: string | null;
   conversationsWithUnread?: number;
   logoutError: string;
   isLoggingOut: boolean;
   onLogout: () => void;
 }) {
-  const initials = getInitials(currentAnalystName);
   const unreadBadge = conversationsWithUnread > 9 ? "9+" : String(conversationsWithUnread);
   const conversationsLabel =
     conversationsWithUnread > 0
@@ -71,67 +74,29 @@ export function AnalystSidebar({
               ) : null}
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {/* <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Chamados"
-              aria-label="Chamados"
-              className="size-10 justify-center rounded-xl text-slate-500"
-            >
-              <Ticket />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Equipe"
-              aria-label="Equipe"
-              className="size-10 justify-center rounded-xl text-slate-500"
-            >
-              <UsersRound />
-            </SidebarMenuButton>
-          </SidebarMenuItem> */}
         </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="items-center px-2 pb-4">
-        {/* <SidebarMenu className="w-auto"> */}
-        {/* <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Ajuda"
-              aria-label="Ajuda"
-              className="size-10 justify-center rounded-xl text-slate-500"
-            >
-              <CircleHelp />
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem> */}
-        {/* <SidebarMenuButton
-              tooltip="Configurações"
-              aria-label="Configurações"
-              className="size-10 justify-center rounded-xl text-slate-500"
-            >
-              <Settings />
-            </SidebarMenuButton> */}
-        {/* </SidebarMenuItem> */}
-        {/* </SidebarMenu> */}
         <SidebarSeparator className="my-2 w-8 bg-slate-200" />
-        <button
-          type="button"
-          aria-label={`Perfil de ${currentAnalystName}`}
-          title={currentAnalystName}
-          className="rounded-full ring-2 ring-white"
-        >
-          <UserAvatar initials={initials} className="size-9 text-[11px]" />
-        </button>
-        <button
-          type="button"
-          aria-label="Sair"
-          title="Sair"
-          onClick={onLogout}
-          disabled={isLoggingOut}
-          className="mt-1 flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-        >
-          <LogOut className="size-4" />
-        </button>
+        <AnalystAccountPopover
+          name={currentAnalystName}
+          email={currentAnalystEmail}
+          job={currentAnalystJob}
+          side="right"
+          align="end"
+        />
+        <LogoutConfirmDialog isLoggingOut={isLoggingOut} onLogout={onLogout}>
+          <button
+            type="button"
+            aria-label="Sair"
+            title="Sair"
+            disabled={isLoggingOut}
+            className="mt-1 flex size-9 cursor-pointer items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+          >
+            <LogOut className="size-4" />
+          </button>
+        </LogoutConfirmDialog>
         {logoutError ? (
           <p role="alert" className="max-w-24 text-center text-[10px] text-red-600">
             {logoutError}

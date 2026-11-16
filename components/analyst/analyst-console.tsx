@@ -15,10 +15,14 @@ export function AnalystConsole({
   initialConversations,
   currentAnalystId,
   currentAnalystName,
+  currentAnalystEmail,
+  currentAnalystJob,
 }: {
   initialConversations: AnalystConversationView[];
   currentAnalystId: string;
   currentAnalystName: string;
+  currentAnalystEmail: string;
+  currentAnalystJob: string | null;
 }) {
   const { logout, logoutError, isLoggingOut } = useLogout();
   const consoleState = useAnalystConsole({
@@ -39,6 +43,8 @@ export function AnalystConsole({
     >
       <AnalystSidebar
         currentAnalystName={currentAnalystName}
+        currentAnalystEmail={currentAnalystEmail}
+        currentAnalystJob={currentAnalystJob}
         conversationsWithUnread={consoleState.conversationsWithUnread}
         logoutError={logoutError}
         isLoggingOut={isLoggingOut}
@@ -52,6 +58,9 @@ export function AnalystConsole({
             filteredConversations={consoleState.filteredConversations}
             selectedId={consoleState.selectedId}
             currentAnalystId={currentAnalystId}
+            currentAnalystName={currentAnalystName}
+            currentAnalystEmail={currentAnalystEmail}
+            currentAnalystJob={currentAnalystJob}
             now={consoleState.now}
             search={consoleState.search}
             conversationFilter={consoleState.conversationFilter}

@@ -18,6 +18,8 @@ export default async function AnalistaPage() {
       initialConversations={initialConversations}
       currentAnalystId={user.id}
       currentAnalystName={user.name}
+      currentAnalystEmail={user.email}
+      currentAnalystJob={user.job}
     />
   );
 }

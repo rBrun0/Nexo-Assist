@@ -1,27 +1,17 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { sendManualChatMessageAction } from "@/app/actions/chat";
 import { buildTicketSelectionMessage } from "@/components/chat/assistant-message-blocks";
 import {
   buildOptimisticEmployeeMessage,
+  useAnalystQueueRealtime,
   useChatMessages,
 } from "@/hooks/use-chat-messages";
 import { useOnlinePresence } from "@/hooks/use-online-presence";
-import {
-  applyAgentProgressEvent,
-  type AgentActivityStep,
-} from "@/lib/agent/activity";
+import { type AgentActivityStep, applyAgentProgressEvent } from "@/lib/agent/activity";
 import type { ServiceDeskUIMessage } from "@/lib/agent/run-service-desk-agent";
 import {
   cancelTicketDraft,
@@ -31,22 +21,16 @@ import {
   requestAnalyst,
 } from "@/lib/api/conversations";
 import { listMyTickets } from "@/lib/api/tickets";
-import {
-  getEmployeeStatusUi,
-  isHumanHandoffStatus,
-} from "@/lib/chat/conversation-status";
+import { getEmployeeStatusUi, isHumanHandoffStatus } from "@/lib/chat/conversation-status";
 import { CLIENT_STREAM_TIMEOUT_MS } from "@/lib/chat/stream-timeout";
 import type { ChatHistoryMessage } from "@/lib/types/conversation";
-import type {
-  EmployeeConversation,
-  EmployeeTicket,
-} from "@/lib/types/employee-conversation";
-import { asOptionalTicketId } from "@/lib/validations/uuid";
+import type { EmployeeConversation, EmployeeTicket } from "@/lib/types/employee-conversation";
 import type {
   ChatOption,
   TicketChoiceIntent,
   TicketChoiceItem,
 } from "@/lib/validations/chat-metadata";
+import { asOptionalTicketId } from "@/lib/validations/uuid";
 
 type EmployeeIdentity = {
   id: string;
@@ -63,22 +47,16 @@ export function useEmployeeConversation({
   enabled: boolean;
 }) {
   const [message, setMessage] = useState("");
-  const [conversation, setConversation] = useState<EmployeeConversation | null>(
-    null,
-  );
+  const [conversation, setConversation] = useState<EmployeeConversation | null>(null);
   const [, setTickets] = useState<EmployeeTicket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState("");
   const [isLoadingConversation, setIsLoadingConversation] = useState(true);
   const [conversationError, setConversationError] = useState("");
-  const [agentActivitySteps, setAgentActivitySteps] = useState<
-    AgentActivityStep[]
-  >([]);
-  const [isSendingManualMessage, setIsSendingManualMessage] = useState(false);
+  const [agentActivitySteps, setAgentActivitySteps] = useState<AgentActivityStep[]>([]);
   const [isRequestingAnalyst, setIsRequestingAnalyst] = useState(false);
   const [isEndingConversation, setIsEndingConversation] = useState(false);
   const [endedNotice, setEndedNotice] = useState(false);
-  const [pendingLocalMessage, setPendingLocalMessage] =
-    useState<ChatHistoryMessage | null>(null);
+  const [pendingLocalMessage, setPendingLocalMessage] = useState<ChatHistoryMessage | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,13 +87,9 @@ export function useEmployeeConversation({
         api: "/api/conversations/me",
         prepareSendMessagesRequest: ({ body }) => {
           const requestBody =
-            body && typeof body === "object"
-              ? (body as Record<string, unknown>)
-              : {};
+            body && typeof body === "object" ? (body as Record<string, unknown>) : {};
           const nextMessage =
-            typeof requestBody.message === "string"
-              ? requestBody.message.trim()
-              : "";
+            typeof requestBody.message === "string" ? requestBody.message.trim() : "";
           const ticketId = asOptionalTicketId(
             typeof requestBody.selectedTicketId === "string"
               ? requestBody.selectedTicketId
@@ -142,9 +116,7 @@ export function useEmployeeConversation({
     transport: chatTransport,
     onData: (dataPart) => {
       if (dataPart.type === "data-progress") {
-        setAgentActivitySteps((current) =>
-          applyAgentProgressEvent(current, dataPart.data),
-        );
+        setAgentActivitySteps((current) => applyAgentProgressEvent(current, dataPart.data));
       }
     },
     onFinish: ({ isAbort, isError }) => {
@@ -162,17 +134,12 @@ export function useEmployeeConversation({
           setPendingLocalMessage(null);
         })
         .catch((error: unknown) => {
-          console.error(
-            "Falha ao carregar conversa após a resposta do agente:",
-            {
-              conversationId: conversationRef.current?.id ?? null,
-              error,
-            },
-          );
+          console.error("Falha ao carregar conversa após a resposta do agente:", {
+            conversationId: conversationRef.current?.id ?? null,
+            error,
+          });
           if (!isError && !isAbort) {
-            setConversationError(
-              "A resposta chegou, mas não foi possível atualizar o histórico.",
-            );
+            setConversationError("A resposta chegou, mas não foi possível atualizar o histórico.");
           }
         });
     },
@@ -213,26 +180,16 @@ export function useEmployeeConversation({
     },
   });
 
-  const chatHistory = useChatMessages(
-    conversation?.id ?? null,
-    conversation?.messages ?? [],
-    {
-      pausePolling: chatStatus === "submitted" || chatStatus === "streaming",
-    },
-  );
+  const chatHistory = useChatMessages(conversation?.id ?? null, conversation?.messages ?? [], {
+    pausePolling: chatStatus === "submitted" || chatStatus === "streaming",
+  });
 
-  const syncConversationMessages = useCallback(
-    (nextConversation: EmployeeConversation | null) => {
-      setConversation(nextConversation);
-      if (nextConversation?.id) {
-        syncMessagesRef.current?.(
-          nextConversation.messages,
-          nextConversation.id,
-        );
-      }
-    },
-    [],
-  );
+  const syncConversationMessages = useCallback((nextConversation: EmployeeConversation | null) => {
+    setConversation(nextConversation);
+    if (nextConversation?.id) {
+      syncMessagesRef.current?.(nextConversation.messages, nextConversation.id);
+    }
+  }, []);
 
   const loadConversation = useCallback(async () => {
     const [conversationResult, ticketsResult] = await Promise.all([
@@ -267,9 +224,7 @@ export function useEmployeeConversation({
     if (base.some((item) => item.id === pendingLocalMessage.id)) return base;
     if (
       base.some(
-        (item) =>
-          item.sender === "EMPLOYEE" &&
-          item.content === pendingLocalMessage.content,
+        (item) => item.sender === "EMPLOYEE" && item.content === pendingLocalMessage.content,
       )
     ) {
       return base;
@@ -279,13 +234,9 @@ export function useEmployeeConversation({
 
   const messageLimit = conversation?.messageLimit ?? 30;
   const messageCount =
-    conversation?.messageCount ??
-    messages.filter((item) => item.sender !== "SYSTEM").length;
+    conversation?.messageCount ?? messages.filter((item) => item.sender !== "SYSTEM").length;
   const isAtMessageLimit = messageCount >= messageLimit;
-  const isSendingMessage =
-    isSendingManualMessage ||
-    chatStatus === "submitted" ||
-    chatStatus === "streaming";
+  const isSendingMessage = chatStatus === "submitted" || chatStatus === "streaming";
   const streamedResponseText = streamedMessages
     .filter((streamedMessage) => streamedMessage.role === "assistant")
     .flatMap((streamedMessage) => streamedMessage.parts)
@@ -315,18 +266,13 @@ export function useEmployeeConversation({
   useEffect(() => {
     const streamed = streamedResponseText.trim();
     if (!streamed) return;
-    const lastEmployeeIndex = messages.findLastIndex(
-      (item) => item.sender === "EMPLOYEE",
-    );
+    const lastEmployeeIndex = messages.findLastIndex((item) => item.sender === "EMPLOYEE");
     const assistant = messages
       .slice(lastEmployeeIndex + 1)
       .find((item) => item.sender === "ASSISTANT");
     if (!assistant) return;
     const opening = streamed.slice(0, 160);
-    if (
-      assistant.content.trim() !== streamed &&
-      !assistant.content.includes(opening)
-    ) {
+    if (assistant.content.trim() !== streamed && !assistant.content.includes(opening)) {
       return;
     }
     setStreamedMessages([]);
@@ -349,6 +295,17 @@ export function useEmployeeConversation({
       cancelled = true;
     };
   }, [enabled, loadConversation]);
+
+  const refreshConversationIfIdle = useCallback(() => {
+    if (!enabled) return;
+    const status = chatStatusRef.current;
+    if (status === "submitted" || status === "streaming") return;
+    void loadConversation().catch((error: unknown) => {
+      console.error("Falha ao atualizar conversa do funcionário:", error);
+    });
+  }, [enabled, loadConversation]);
+
+  useAnalystQueueRealtime(refreshConversationIfIdle);
 
   useEffect(() => {
     return () => clearStreamTimeout();
@@ -378,7 +335,6 @@ export function useEmployeeConversation({
     console.info("[chat funcionário] envio", {
       conversationId: conversation?.id ?? null,
       status: conversation?.status ?? null,
-      caminho: humanHandoff ? "manual" : "agente",
     });
     const ticketId = asOptionalTicketId(ticketIdOverride ?? selectedTicketId);
     setMessage("");
@@ -397,26 +353,6 @@ export function useEmployeeConversation({
     }
 
     try {
-      if (isHumanHandoffStatus(conversation?.status) && conversation) {
-        setIsSendingManualMessage(true);
-        const result = await sendManualChatMessageAction({
-          sessionId: conversation.id,
-          message: trimmedMessage,
-        });
-        if (!result.success) throw new Error(result.error);
-        chatHistory.replaceOptimistic(
-          optimisticMessage.id,
-          result.message as ChatHistoryMessage,
-          conversation.id,
-        );
-        optimisticMessageIdRef.current = null;
-        setPendingLocalMessage(null);
-        setSelectedTicketId("");
-        setAgentActivitySteps([]);
-        await Promise.all([chatHistory.refetch(), loadConversation()]);
-        return;
-      }
-
       clearStreamTimeout();
       streamStartedAtRef.current = Date.now();
       streamTimeoutRef.current = setTimeout(() => {
@@ -444,22 +380,17 @@ export function useEmployeeConversation({
           streamStartedAtRef.current = null;
           setAgentActivitySteps([]);
           setStreamedMessages([]);
-          setConversationError(
-            "A resposta demorou demais. Tente enviar novamente.",
-          );
+          setConversationError("A resposta demorou demais. Tente enviar novamente.");
           void Promise.all([loadConversation(), chatHistory.refetch()])
             .then(() => {
               optimisticMessageIdRef.current = null;
               setPendingLocalMessage(null);
             })
             .catch((loadError: unknown) => {
-              console.error(
-                "Falha ao atualizar conversa após timeout do stream:",
-                {
-                  conversationId: conversationRef.current?.id ?? null,
-                  loadError,
-                },
-              );
+              console.error("Falha ao atualizar conversa após timeout do stream:", {
+                conversationId: conversationRef.current?.id ?? null,
+                loadError,
+              });
             });
         })();
       }, CLIENT_STREAM_TIMEOUT_MS);
@@ -485,14 +416,9 @@ export function useEmployeeConversation({
       streamStartedAtRef.current = null;
       setAgentActivitySteps([]);
       setConversationError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar a mensagem.",
+        error instanceof Error ? error.message : "Não foi possível enviar a mensagem.",
       );
-      void Promise.all([
-        loadConversation(),
-        sessionId ? chatHistory.refetch() : Promise.resolve(),
-      ])
+      void Promise.all([loadConversation(), sessionId ? chatHistory.refetch() : Promise.resolve()])
         .then(() => {
           optimisticMessageIdRef.current = null;
           setPendingLocalMessage(null);
@@ -503,8 +429,6 @@ export function useEmployeeConversation({
             loadError,
           });
         });
-    } finally {
-      setIsSendingManualMessage(false);
     }
   }
 
@@ -562,10 +486,7 @@ export function useEmployeeConversation({
     void submitMessage(trimmed);
   }
 
-  function handleTicketSelect(
-    ticket: TicketChoiceItem,
-    intent: TicketChoiceIntent,
-  ) {
+  function handleTicketSelect(ticket: TicketChoiceItem, intent: TicketChoiceIntent) {
     setSelectedTicketId(ticket.id);
     const selection = buildTicketSelectionMessage(ticket, intent);
     if (selection.mode === "compose") {
@@ -607,10 +528,7 @@ export function useEmployeeConversation({
       "Funcionário solicitou analista após atingir o limite de 30 mensagens.",
     );
     if (!result.success) {
-      console.error(
-        "Falha ao solicitar analista no limite da conversa:",
-        result.error,
-      );
+      console.error("Falha ao solicitar analista no limite da conversa:", result.error);
       setConversationError(result.error.message);
       setIsRequestingAnalyst(false);
       return;
@@ -634,8 +552,8 @@ export function useEmployeeConversation({
     isSendingMessage,
     isAwaitingAssistant:
       Boolean(streamedResponseText.trim()) ||
-      (!isSendingManualMessage &&
-        (chatStatus === "submitted" || chatStatus === "streaming")),
+      chatStatus === "submitted" ||
+      chatStatus === "streaming",
     isRequestingAnalyst,
     isEndingConversation,
     endedNotice,

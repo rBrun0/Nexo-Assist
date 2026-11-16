@@ -3,7 +3,7 @@ import type { AnalystConversationListItem } from "@/lib/analyst/map-conversation
 type AnalystStatus = AnalystConversationListItem["status"];
 
 const PLACEHOLDER_BY_STATUS: Partial<Record<AnalystStatus, string>> = {
-  "Com o agente": "Assuma o atendimento para responder",
+  "Com o agente": "O Nexo Assist ainda está atendendo.",
   Aguardando: "Assuma a conversa para responder",
   Encerrada: "Conversa encerrada.",
 };
@@ -17,8 +17,7 @@ export function getAnalystFooterUi({
   assignedAnalystId: string | null;
   currentAnalystId: string;
 }) {
-  const isAssignedToMe =
-    status === "Em atendimento" && assignedAnalystId === currentAnalystId;
+  const isAssignedToMe = status === "Em atendimento" && assignedAnalystId === currentAnalystId;
 
   const placeholder =
     PLACEHOLDER_BY_STATUS[status] ??
@@ -28,6 +27,8 @@ export function getAnalystFooterUi({
 
   return {
     showWaitingBanner: status === "Aguardando",
+    showClaimAction: status === "Aguardando",
+    showReturnAction: isAssignedToMe,
     showAssignedToolbar: isAssignedToMe,
     canCompose: isAssignedToMe,
     placeholder,
