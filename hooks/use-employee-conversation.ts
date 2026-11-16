@@ -57,6 +57,7 @@ export function useEmployeeConversation({
   const [isEndingConversation, setIsEndingConversation] = useState(false);
   const [endedNotice, setEndedNotice] = useState(false);
   const [pendingLocalMessage, setPendingLocalMessage] = useState<ChatHistoryMessage | null>(null);
+  const [isFinalizingAssistantTurn, setIsFinalizingAssistantTurn] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const streamTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,7 +122,16 @@ export function useEmployeeConversation({
     },
     onFinish: ({ isAbort, isError }) => {
       clearStreamTimeout();
-      setAgentActivitySteps([]);
+      setIsFinalizingAssistantTurn(true);
+      setAgentActivitySteps((current) =>
+        applyAgentProgressEvent(current, {
+          id: "finalizing",
+          message: "Finalizando resposta...",
+          label: "Finalizando resposta...",
+          status: "running",
+          phase: "working",
+        }),
+      );
       if (!streamedResponseTextRef.current.trim()) {
         streamStartedAtRef.current = null;
       }
@@ -141,6 +151,10 @@ export function useEmployeeConversation({
           if (!isError && !isAbort) {
             setConversationError("A resposta chegou, mas não foi possível atualizar o histórico.");
           }
+        })
+        .finally(() => {
+          setIsFinalizingAssistantTurn(false);
+          setAgentActivitySteps([]);
         });
     },
     onError: (error) => {
@@ -157,6 +171,7 @@ export function useEmployeeConversation({
       if (!streamedResponseTextRef.current.trim()) {
         streamStartedAtRef.current = null;
       }
+      setIsFinalizingAssistantTurn(false);
       setAgentActivitySteps([]);
       setConversationError(
         error instanceof Error && error.message.trim()
@@ -277,6 +292,8 @@ export function useEmployeeConversation({
     }
     setStreamedMessages([]);
     streamStartedAtRef.current = null;
+    setIsFinalizingAssistantTurn(false);
+    setAgentActivitySteps([]);
   }, [messages, streamedResponseText, setStreamedMessages]);
 
   useEffect(() => {
@@ -552,7 +569,8 @@ export function useEmployeeConversation({
     isSendingMessage,
     isAwaitingAssistant:
       !isHumanHandoffStatus(conversation?.status) &&
-      (Boolean(streamedResponseText.trim()) ||
+      (isFinalizingAssistantTurn ||
+        Boolean(streamedResponseText.trim()) ||
         chatStatus === "submitted" ||
         chatStatus === "streaming"),
     isRequestingAnalyst,

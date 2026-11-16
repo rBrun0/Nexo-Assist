@@ -30,13 +30,11 @@ export function EmployeePage({
   const isProfilePage = page === "perfil";
   const pagePath = isProfilePage ? (
     <div className="flex items-center gap-2">
-      <span>Service desk de TI</span> <span>&gt;</span>{" "}
-      <b className="text-black">Meu perfil</b>
+      <span>Service desk de TI</span> <span>&gt;</span> <b className="text-black">Meu perfil</b>
     </div>
   ) : (
     <div className="flex items-center gap-2">
-      <span>Service desk de TI</span> <span>&gt;</span>{" "}
-      <b className="text-black">Atendimento</b>
+      <span>Service desk de TI</span> <span>&gt;</span> <b className="text-black">Atendimento</b>
     </div>
   );
 
@@ -73,9 +71,7 @@ export function EmployeePage({
               className="h-7 gap-1.5 rounded-full border-none! px-2.5 text-[11px] font-medium"
               aria-label={chat.statusBadge.aria}
             >
-              <span
-                className={`size-1.5 rounded-full ${chat.statusBadge.dotClass}`}
-              />
+              <span className={`size-1.5 rounded-full ${chat.statusBadge.dotClass}`} />
               {chat.statusBadge.label}
             </Badge>
           ) : null}
@@ -96,22 +92,16 @@ export function EmployeePage({
                   <EmployeeEmptyState
                     firstName={getFirstName(employee.name)}
                     endedNotice={chat.endedNotice}
-                    onSuggestionSelect={(title) =>
-                      void chat.submitMessage(title)
-                    }
+                    onSuggestionSelect={(title) => void chat.submitMessage(title)}
                   />
                 ) : (
                   <EmployeeMessageList
                     messages={chat.messages}
-                    isSendingMessage={
-                      chat.isAwaitingAssistant || chat.isEndingConversation
-                    }
+                    isSendingMessage={chat.isAwaitingAssistant || chat.isEndingConversation}
                     agentActivitySteps={chat.agentActivitySteps}
                     streamedResponseText={chat.streamedResponseText}
                     peerIsTyping={chat.peerIsTyping}
-                    lastInteractiveAssistantMessageId={
-                      chat.lastInteractiveAssistantMessageId
-                    }
+                    lastInteractiveAssistantMessageId={chat.lastInteractiveAssistantMessageId}
                     messagesEndRef={chat.messagesEndRef}
                     onOptionSelect={chat.handleOptionSelect}
                     onTicketSelect={chat.handleTicketSelect}
@@ -129,10 +119,7 @@ export function EmployeePage({
               <ChatScrollToBottom
                 visible={showFab}
                 newCount={newCount}
-                typing={
-                  chat.peerIsTyping ||
-                  (chat.isAwaitingAssistant && !chat.streamedResponseText)
-                }
+                typing={chat.peerIsTyping || chat.isAwaitingAssistant}
                 onClick={scrollToBottom}
               />
             </div>
@@ -160,10 +147,7 @@ export function EmployeePage({
           </main>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <EmployeeProfile
-              employee={employee}
-              showPasswordForm={showPasswordForm}
-            />
+            <EmployeeProfile employee={employee} showPasswordForm={showPasswordForm} />
           </div>
         )}
       </SidebarInset>

@@ -121,9 +121,14 @@ export function EmployeeMessageList({
               <AgentActivityTrail steps={agentActivitySteps} className="min-w-0 flex-1" />
             </div>
             {streamedResponseText ? (
-              <div className="rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
-                {formatAssistantRichText(streamedResponseText)}
-              </div>
+              <>
+                <div className="rounded-xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-slate-700">
+                  {formatAssistantRichText(streamedResponseText)}
+                </div>
+                {isSendingMessage ? (
+                  <ChatTypingIndicator className="mt-2" label="digitando..." />
+                ) : null}
+              </>
             ) : (
               <ChatTypingIndicator label="digitando..." />
             )}

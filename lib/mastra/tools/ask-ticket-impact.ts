@@ -6,7 +6,7 @@ import { impactChoiceOutputSchema } from "@/lib/mastra/schemas/tool-outputs";
 export const askTicketImpactTool = createTool({
   id: "ask_ticket_impact",
   description:
-    "Mostra a pergunta 'Quem está sendo afetado?' com opções Só eu, Minha equipe, Toda a empresa e Não sei. Use antes de create_ticket quando o impacto ainda não foi informado.",
+    "Mostra a pergunta 'Quem está sendo afetado?' com opções Só eu, Minha equipe, Toda a empresa e Não sei. Use antes de create_ticket quando o impacto ainda não foi informado. Não peça título nem descrição neste passo.",
   inputSchema: z.object({
     issueSummary: z.string().trim().min(5).max(200),
   }),

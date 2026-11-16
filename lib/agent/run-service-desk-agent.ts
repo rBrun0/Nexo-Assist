@@ -1,20 +1,20 @@
 import "server-only";
 
-import { RequestContext } from "@mastra/core/request-context";
 import { toAISdkStream } from "@mastra/ai-sdk";
-import { ChatStatus, Prisma } from "@prisma/client";
+import { RequestContext } from "@mastra/core/request-context";
+import { ChatStatus, type Prisma } from "@prisma/client";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
-  uiMessageChunkSchema,
   type UIMessage,
+  uiMessageChunkSchema,
 } from "ai";
-
+import type { AgentProgressPayload } from "@/lib/agent/activity";
 import {
+  type AssistantTextEncoder,
   classifyAgentChunk,
   createAssistantTextEncoder,
   readAgentTextDelta,
-  type AssistantTextEncoder,
 } from "@/lib/agent/assistant-text-stream";
 import { buildAssistantMetadata } from "@/lib/agent/build-assistant-metadata";
 import {
@@ -22,41 +22,34 @@ import {
   LOW_CONFIDENCE_THRESHOLD,
   recordReplyWithoutTools,
 } from "@/lib/agent/confidence";
-import {
-  formatAgentError,
-  logAgentError,
-} from "@/lib/agent/format-agent-error";
+import { formatAgentError, logAgentError } from "@/lib/agent/format-agent-error";
 import { mapConversationHistory } from "@/lib/agent/history";
 import {
   pickAssistantResponseText,
   shouldRetryWithoutTools,
 } from "@/lib/agent/resolve-response-text";
 import type { AgentAssessment, ToolAction } from "@/lib/agent/tools";
-import type { AgentProgressPayload } from "@/lib/agent/activity";
-import { getMastra } from "@/lib/mastra/instance";
 import { classifyTurnAgent } from "@/lib/mastra/agents/classify-turn";
-import {
-  serviceDeskAgent,
-  serviceDeskModelId,
-} from "@/lib/mastra/agents/service-desk";
+import { serviceDeskAgent, serviceDeskModelId } from "@/lib/mastra/agents/service-desk";
 import {
   actionFromToolOutput,
   applyToolEvidence,
   runningLabelForTool,
 } from "@/lib/mastra/apply-tool-result";
 import { handoffReasonForTurn } from "@/lib/mastra/handoff-from-step";
+import { getMastra } from "@/lib/mastra/instance";
 import {
   confidenceBand,
   fallbackDecision,
   reconcileConfidence,
 } from "@/lib/mastra/reconcile-decision";
 import { agentDecisionSchema } from "@/lib/mastra/schemas/decision";
+import { prisma } from "@/lib/prisma";
 import {
   getEmployeeTicketsForAgent,
   markSessionWaitingHuman,
   saveAssistantMessage,
 } from "@/lib/services/conversations";
-import { prisma } from "@/lib/prisma";
 import { isTicketOverdue } from "@/lib/services/ticket-sla";
 
 export type ServiceDeskUIMessage = UIMessage<
@@ -112,10 +105,7 @@ async function isAcceptedUiChunk(chunk: unknown) {
   }
 }
 
-function writeEncodedText(
-  textEncoder: AssistantTextEncoder,
-  write: (part: unknown) => void,
-) {
+function writeEncodedText(textEncoder: AssistantTextEncoder, write: (part: unknown) => void) {
   for (const chunk of textEncoder.drain()) write(chunk);
 }
 
@@ -143,10 +133,7 @@ async function pipeAgentStream(
       }
       if (kind === "drop") continue;
       if (!(await isAcceptedUiChunk(value))) {
-        const type =
-          value && typeof value === "object" && "type" in value
-            ? value.type
-            : "unknown";
+        const type = value && typeof value === "object" && "type" in value ? value.type : "unknown";
         console.error("[agente] chunk de UI ignorado", { type });
         continue;
       }
@@ -236,9 +223,7 @@ export async function runServiceDeskAgent({
     select: { sender: true, content: true, metadata: true },
   });
   const selectedTicket = selectedTicketId
-    ? (await getEmployeeTicketsForAgent(userId)).find(
-        (ticket) => ticket.id === selectedTicketId,
-      )
+    ? (await getEmployeeTicketsForAgent(userId)).find((ticket) => ticket.id === selectedTicketId)
     : undefined;
   const actions: ToolAction[] = [];
   const assessment: AgentAssessment = { confidenceScore: 100 };
@@ -341,9 +326,7 @@ export async function runServiceDeskAgent({
           temperature: 0.2,
           maxOutputTokens: 700,
         },
-        ...(model.startsWith("google/")
-          ? { providerOptions: GOOGLE_PROVIDER_OPTIONS }
-          : {}),
+        ...(model.startsWith("google/") ? { providerOptions: GOOGLE_PROVIDER_OPTIONS } : {}),
         onChunk: (chunk: unknown) => {
           const call = readToolCall(chunk);
           if (!call) return;
@@ -384,9 +367,7 @@ export async function runServiceDeskAgent({
         });
         if (!primaryText) primaryText = textEncoder.sent.trim();
         if (!shouldRetryWithoutTools(primaryText, actions.length)) {
-          throw new Error(
-            formatAgentError(error, { phase: "primary", model }),
-          );
+          throw new Error(formatAgentError(error, { phase: "primary", model }));
         }
       }
 
@@ -437,9 +418,7 @@ export async function runServiceDeskAgent({
           throw new Error(formatAgentError(error, { phase: "retry", model }));
         }
       } else if (primaryCallError && !primaryText) {
-        throw new Error(
-          formatAgentError(primaryCallError, { phase: "primary", model }),
-        );
+        throw new Error(formatAgentError(primaryCallError, { phase: "primary", model }));
       }
 
       const picked = pickAssistantResponseText({ primaryText, retryText });
@@ -481,9 +460,7 @@ export async function runServiceDeskAgent({
         responseText += `\n\n${mandatoryReason} Encaminhei a conversa para um analista e pauso o atendimento automático.`;
         await ensureHandoff(mandatoryReason);
       }
-      const requestedHuman = actions.some(
-        (action) => action.name === "request_helpdesk_analyst",
-      );
+      const requestedHuman = actions.some((action) => action.name === "request_helpdesk_analyst");
       const evidenceScore = assessment.confidenceScore;
       const handoffSummaryForRationale = actions.find(
         (action) => action.name === "request_helpdesk_analyst",
@@ -495,9 +472,8 @@ export async function runServiceDeskAgent({
         handoffReason: assessment.handoffReason ?? handoffSummaryForRationale,
         usedFallback: picked.source === "fallback",
       });
-      const draftPriority = actions.find(
-        (action) => action.name === "create_ticket",
-      )?.draft?.priority;
+      const draftPriority = actions.find((action) => action.name === "create_ticket")?.draft
+        ?.priority;
       const fallback = fallbackDecision({
         actions,
         evidenceScore,
@@ -506,6 +482,13 @@ export async function runServiceDeskAgent({
       });
 
       let classified = fallback;
+      reportProgress({
+        id: "finalize-turn",
+        message: "Finalizando resposta...",
+        label: "Finalizando resposta...",
+        status: "running",
+        phase: "working",
+      });
       try {
         const generated = await classifyTurnAgent.generate(
           [
@@ -527,8 +510,7 @@ export async function runServiceDeskAgent({
           },
         );
         const parsed = agentDecisionSchema.safeParse(generated.object);
-        classified =
-          generated.usedFallbackValue || !parsed.success ? fallback : parsed.data;
+        classified = generated.usedFallbackValue || !parsed.success ? fallback : parsed.data;
       } catch (error) {
         logAgentError("Falha ao classificar o turno:", error, {
           phase: "primary",
@@ -536,10 +518,7 @@ export async function runServiceDeskAgent({
         });
       }
 
-      const confidenceScore = reconcileConfidence(
-        classified.confidenceScore,
-        evidenceScore,
-      );
+      const confidenceScore = reconcileConfidence(classified.confidenceScore, evidenceScore);
       if (
         confidenceScore < LOW_CONFIDENCE_THRESHOLD &&
         !actions.some((action) => action.name === "request_helpdesk_analyst")
@@ -602,17 +581,11 @@ export async function runServiceDeskAgent({
         selectedTicketId,
       });
 
-      const saved = await saveAssistantMessage(
-        conversationId,
-        responseText,
-        decision,
-        metadata,
-        {
-          confidenceScore,
-          handoffSummary,
-          handoffReason: assessment.handoffReason ?? handoffSummary,
-        },
-      );
+      const saved = await saveAssistantMessage(conversationId, responseText, decision, metadata, {
+        confidenceScore,
+        handoffSummary,
+        handoffReason: assessment.handoffReason ?? handoffSummary,
+      });
       if (!saved.success) {
         throw new Error(saved.error.message);
       }
@@ -634,5 +607,5 @@ export async function runServiceDeskAgent({
     },
   });
 
-      return createUIMessageStreamResponse({ stream });
+  return createUIMessageStreamResponse({ stream });
 }
